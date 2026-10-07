@@ -76,6 +76,12 @@ textarea{min-height:90px;resize:vertical}
 .notice.error{background:#fef2f2;border:1px solid #fecaca;color:#991b1b}
 footer{padding:28px 0 10px;color:var(--muted);text-align:center;font-size:13px}
 .contact a{color:#5b21b6;text-decoration:none}
+.name-warning{
+  display:none;margin-top:7px;padding:10px 12px;border-radius:12px;
+  background:#fff7ed;border:1px solid #fdba74;color:#9a3412;font-size:13px;font-weight:700
+}
+.name-warning.show{display:block}
+
 @media(max-width:700px){
   .primary-cta{grid-template-columns:1fr}
   .btn.big{width:100%;min-width:0}
@@ -115,6 +121,12 @@ footer{padding:28px 0 10px;color:var(--muted);text-align:center;font-size:13px}
     <button class="filter" data-group="B">Grupo B</button>
     <button class="filter" data-group="C">Grupo C</button>
     <button class="filter" data-group="D">Grupo D</button>
+    <button class="filter" data-group="E">Grupo E</button>
+    <button class="filter" data-group="F">Grupo F</button>
+    <button class="filter" data-group="G">Grupo G</button>
+    <button class="filter" data-group="H">Grupo H</button>
+    <button class="filter" data-group="I">Grupo I</button>
+    <button class="filter" data-group="J">Grupo J</button>
   </div>
 
   <div id="loading" class="loading">Cargando perfiles…</div>
@@ -131,7 +143,8 @@ footer{padding:28px 0 10px;color:var(--muted);text-align:center;font-size:13px}
       <div class="form-grid">
         <div class="field">
           <label>Nombre *</label>
-          <input id="nombre" required maxlength="100" placeholder="Ej. Víctor">
+          <input id="nombre" required maxlength="100" placeholder="Ej. Víctor" autocomplete="name">
+          <div id="nameWarning" class="name-warning">😂 Ya los conozco, cabrones XD. Pon tu nombre real.</div>
         </div>
         <div class="field">
           <label>Apodo de la secundaria</label>
@@ -142,6 +155,8 @@ footer{padding:28px 0 10px;color:var(--muted);text-align:center;font-size:13px}
           <select id="grupo" required>
             <option value="">Selecciona</option>
             <option>A</option><option>B</option><option>C</option><option>D</option>
+            <option>E</option><option>F</option><option>G</option><option>H</option>
+            <option>I</option><option>J</option>
           </select>
         </div>
         <div class="field">
@@ -218,6 +233,70 @@ function esc(s="") {
 function initials(name="") {
   return name.trim().split(/\s+/).filter(Boolean).map(x=>x[0]).slice(0,2).join("").toUpperCase() || "?";
 }
+
+const ALBUR_NAMES = [
+  "kerri capolla",
+  "rosa melcacho",
+  "rosa melcacho prieto",
+  "rosa melcacho rico",
+  "rosa melcacho perez",
+  "rosa meleno",
+  "benito camelo",
+  "jorge nitales",
+  "jaime costecho",
+  "agapito lopez caste",
+  "agapito lopez cabas",
+  "agapito pelaez",
+  "aquiles poncho",
+  "aquiles vaesa",
+  "aquiles vaesta",
+  "aquiles pico",
+  "elver galarga",
+  "elver gonzalez",
+  "paco gerte",
+  "proculo medallas",
+  "tecla varela bara",
+  "enriqueta nates",
+  "bertha nates",
+  "pilar godoy",
+  "alma maria rico",
+  "alma marla rico",
+  "virginia del hoyo",
+  "debora testa",
+  "lola meraz",
+  "carmela pelaez",
+  "chico davalos",
+  "monica galindo",
+  "pamela rosas",
+  "anacleta",
+  "cura melo",
+  "el cura melo"
+];
+
+function normalizeName(value="") {
+  return value
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .toLowerCase()
+    .replace(/[^a-z0-9ñ ]/g, " ")
+    .replace(/\s+/g, " ")
+    .trim();
+}
+
+function isAlburName(value) {
+  const n = normalizeName(value);
+  if (!n) return false;
+  return ALBUR_NAMES.some(x => n === normalizeName(x) || n.includes(normalizeName(x)));
+}
+
+function updateNameWarning() {
+  const input = document.getElementById("nombre");
+  const warning = document.getElementById("nameWarning");
+  const bad = isAlburName(input.value);
+  warning.classList.toggle("show", bad);
+  return bad;
+}
+
 function showStatus(message, type="info") {
   statusBox.className = "notice " + type;
   statusBox.textContent = message;
@@ -284,6 +363,7 @@ async function loadProfiles() {
 
 function openForm() {
   form.reset();
+  document.getElementById("nameWarning").classList.remove("show");
   modal.classList.add("show");
 }
 function closeForm() {
@@ -294,6 +374,7 @@ document.getElementById("addBtn").onclick = openForm;
 document.getElementById("cancelBtn").onclick = closeForm;
 modal.addEventListener("click", e => { if(e.target === modal) closeForm(); });
 document.getElementById("search").addEventListener("input", render);
+document.getElementById("nombre").addEventListener("input", updateNameWarning);
 
 document.querySelectorAll(".filter").forEach(b => {
   b.onclick = () => {
@@ -306,6 +387,15 @@ document.querySelectorAll(".filter").forEach(b => {
 
 form.addEventListener("submit", async e => {
   e.preventDefault();
+
+  if (updateNameWarning()) {
+    const nombre = document.getElementById("nombre");
+    nombre.focus();
+    nombre.setCustomValidity("Ya los conozco, cabrones XD. Pon tu nombre real.");
+    nombre.reportValidity();
+    setTimeout(() => nombre.setCustomValidity(""), 100);
+    return;
+  }
 
   const telefono = document.getElementById("telefono");
   if (telefono.value && !telefono.checkValidity()) {
