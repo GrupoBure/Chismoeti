@@ -113,10 +113,14 @@ footer{padding:28px 0 10px;color:var(--muted);text-align:center;font-size:13px}
 
   <section class="primary-cta">
     <div>
-      <h2>¿Todavía no te has presentado? 👋</h2>
-      <p>Agrega tu ficha para que los demás sepan quién eres, de qué grupo eras y qué ha sido de ti desde la secundaria.</p>
+      <h2 id="ctaTitle">¿Todavía no te has presentado? 👋</h2>
+      <p id="ctaText">Entra con tu correo para crear o editar únicamente tu propia ficha.</p>
+      <div id="sessionInfo" class="small" style="margin-top:8px"></div>
     </div>
-    <button class="btn big" id="addBtn">👋 Preséntate aquí</button>
+    <div style="display:flex;gap:10px;flex-wrap:wrap;justify-content:flex-end">
+      <button class="btn big" id="addBtn">✉️ Entrar con mi correo</button>
+      <button class="btn secondary" id="logoutBtn" style="display:none">Cerrar sesión</button>
+    </div>
   </section>
 
   <div id="statusBox" class="notice info">Conectando con la base de datos…</div>
@@ -148,7 +152,7 @@ footer{padding:28px 0 10px;color:var(--muted);text-align:center;font-size:13px}
 
 <div class="modal" id="modal">
   <div class="panel">
-    <h2>Agregar mi presentación</h2>
+    <h2 id="formTitle">Agregar mi presentación</h2>
     <form id="profileForm">
       <div class="form-grid">
         <div class="field">
@@ -221,6 +225,24 @@ footer{padding:28px 0 10px;color:var(--muted);text-align:center;font-size:13px}
   </div>
 </div>
 
+<div class="modal" id="authModal">
+  <div class="panel" style="width:min(520px,100%)">
+    <h2>Entrar a Chismoeti</h2>
+    <p style="color:var(--muted);line-height:1.5">
+      Escribe tu correo. Te enviaremos un enlace de acceso; no necesitas recordar otra contraseña.
+    </p>
+    <div class="field">
+      <label>Correo</label>
+      <input id="authEmail" type="email" placeholder="tu@correo.com" autocomplete="email">
+    </div>
+    <div id="authMessage" class="notice info" style="display:none;margin-top:14px"></div>
+    <div class="footer-actions">
+      <button type="button" class="btn secondary" id="cancelAuthBtn">Cancelar</button>
+      <button type="button" class="btn" id="sendMagicBtn">Enviar enlace de acceso</button>
+    </div>
+  </div>
+</div>
+
 <div class="modal" id="profileModal">
   <div class="panel profile-panel">
     <div id="profileContent"></div>
@@ -247,6 +269,20 @@ const profileContent = document.getElementById("profileContent");
 const form = document.getElementById("profileForm");
 const statusBox = document.getElementById("statusBox");
 const saveBtn = document.getElementById("saveBtn");
+const authModal = document.getElementById("authModal");
+const authEmail = document.getElementById("authEmail");
+const authMessage = document.getElementById("authMessage");
+const sendMagicBtn = document.getElementById("sendMagicBtn");
+const logoutBtn = document.getElementById("logoutBtn");
+const ctaTitle = document.getElementById("ctaTitle");
+const ctaText = document.getElementById("ctaText");
+const sessionInfo = document.getElementById("sessionInfo");
+
+let currentUser = null;
+let ownProfile = null;
+let claimableProfile = null;
+let editingMode = "create"; // create | edit
+
 
 function esc(s="") {
   return String(s ?? "").replace(/[&<>"']/g,m=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#039;"}[m]));
@@ -396,6 +432,83 @@ async function uploadPhoto(file) {
   return data.publicUrl;
 }
 
+
+async function refreshAuthState() {
+  const { data: { session } } = await client.auth.getSession();
+  currentUser = session?.user || null;
+  ownProfile = null;
+  claimableProfile = null;
+
+  if (currentUser) {
+    ownProfile = profiles.find(p => p.user_id === currentUser.id) || null;
+
+    if (!ownProfile && currentUser.email) {
+      const email = currentUser.email.trim().toLowerCase();
+      claimableProfile = profiles.find(p =>
+        !p.user_id &&
+        p.correo &&
+        p.correo.trim().toLowerCase() === email
+      ) || null;
+    }
+  }
+
+  updateAuthUI();
+}
+
+function updateAuthUI() {
+  if (!currentUser) {
+    ctaTitle.textContent = "¿Todavía no te has presentado? 👋";
+    ctaText.textContent = "Entra con tu correo para crear tu ficha o editar la que ya es tuya.";
+    sessionInfo.textContent = "";
+    document.getElementById("addBtn").textContent = "✉️ Entrar con mi correo";
+    logoutBtn.style.display = "none";
+    return;
+  }
+
+  logoutBtn.style.display = "inline-block";
+  sessionInfo.textContent = "Sesión: " + (currentUser.email || "");
+
+  if (ownProfile) {
+    ctaTitle.textContent = "Hola, " + (ownProfile.nombre || "de nuevo") + " 👋";
+    ctaText.textContent = "Tu perfil ya está vinculado a tu cuenta. Puedes actualizarlo cuando quieras.";
+    document.getElementById("addBtn").textContent = "✏️ Editar mi perfil";
+  } else if (claimableProfile) {
+    ctaTitle.textContent = "Encontré un perfil con tu correo 👀";
+    ctaText.textContent = "Parece que ya te habías registrado. Vincúlalo a tu cuenta para poder editarlo.";
+    document.getElementById("addBtn").textContent = "🔗 Vincular mi perfil";
+  } else {
+    ctaTitle.textContent = "Ya entraste a Chismoeti ✅";
+    ctaText.textContent = "Ahora crea tu perfil. Quedará vinculado a tu cuenta para que sólo tú puedas editarlo.";
+    document.getElementById("addBtn").textContent = "👋 Crear mi perfil";
+  }
+}
+
+async function claimExistingProfile() {
+  if (!currentUser || !claimableProfile) return;
+
+  const { error } = await client
+    .from("perfiles")
+    .update({ user_id: currentUser.id })
+    .eq("id", claimableProfile.id);
+
+  if (error) {
+    alert("No pude vincular tu perfil: " + error.message);
+    return;
+  }
+
+  await document.addEventListener("keydown", e => {
+  if (e.key === "Escape") {
+    closeForm();
+    closeAuth();
+    closeProfile();
+  }
+});
+
+loadProfiles();
+  await refreshAuthState();
+  alert("✅ Perfil vinculado. A partir de ahora sólo tú puedes editarlo.");
+}
+
 async function loadProfiles() {
   loading.style.display = "block";
   grid.innerHTML = "";
@@ -415,6 +528,7 @@ async function loadProfiles() {
   profiles = data || [];
   showStatus("✅ Conectado a Supabase. Los perfiles que agregues aquí serán compartidos entre todos los dispositivos.", "ok");
   render();
+  await refreshAuthState();
 }
 
 
@@ -479,17 +593,108 @@ function closeProfile() {
   profileModal.classList.remove("show");
 }
 
-function openForm() {
+function fillFormFromProfile(p) {
   form.reset();
   document.getElementById("nameWarning").classList.remove("show");
+  document.getElementById("nombre").value = p?.nombre || "";
+  document.getElementById("apodo").value = p?.apodo || "";
+  document.getElementById("grupo").value = p?.grupo || "";
+  document.getElementById("ubicacion").value = p?.ubicacion || "";
+  document.getElementById("telefono").value = p?.telefono || "";
+  document.getElementById("correo").value = p?.correo || currentUser?.email || "";
+  document.getElementById("despues_secundaria").value = p?.despues_secundaria || "";
+  document.getElementById("trabajo").value = p?.trabajo || "";
+  document.getElementById("familia").value = p?.familia || "";
+  document.getElementById("hobbies").value = p?.hobbies || "";
+  document.getElementById("dato_curioso").value = p?.dato_curioso || "";
+}
+
+function openForm(mode="create") {
+  if (!currentUser) {
+    openAuth();
+    return;
+  }
+
+  editingMode = mode;
+  if (mode === "edit" && ownProfile) {
+    document.getElementById("formTitle").textContent = "Editar mi perfil";
+    fillFormFromProfile(ownProfile);
+  } else {
+    document.getElementById("formTitle").textContent = "Crear mi perfil";
+    fillFormFromProfile(null);
+  }
   modal.classList.add("show");
 }
+
 function closeForm() {
   modal.classList.remove("show");
 }
 
-document.getElementById("addBtn").onclick = openForm;
+function openAuth() {
+  authMessage.style.display = "none";
+  authEmail.value = "";
+  authModal.classList.add("show");
+}
+
+function closeAuth() {
+  authModal.classList.remove("show");
+}
+
+document.getElementById("addBtn").onclick = async () => {
+  if (!currentUser) return openAuth();
+  if (ownProfile) return openForm("edit");
+  if (claimableProfile) return claimExistingProfile();
+  return openForm("create");
+};
 document.getElementById("cancelBtn").onclick = closeForm;
+document.getElementById("cancelAuthBtn").onclick = closeAuth;
+
+sendMagicBtn.onclick = async () => {
+  const email = authEmail.value.trim();
+  if (!email) {
+    authMessage.textContent = "Escribe tu correo.";
+    authMessage.className = "notice error";
+    authMessage.style.display = "block";
+    return;
+  }
+
+  sendMagicBtn.disabled = true;
+  sendMagicBtn.textContent = "Enviando…";
+
+  const redirectTo = window.location.origin + window.location.pathname;
+  const { error } = await client.auth.signInWithOtp({
+    email,
+    options: { emailRedirectTo: redirectTo }
+  });
+
+  sendMagicBtn.disabled = false;
+  sendMagicBtn.textContent = "Enviar enlace de acceso";
+
+  authMessage.style.display = "block";
+  if (error) {
+    authMessage.className = "notice error";
+    authMessage.textContent = "No se pudo enviar el acceso: " + error.message;
+  } else {
+    authMessage.className = "notice ok";
+    authMessage.textContent = "✅ Revisa tu correo. Te enviamos un enlace para entrar a Chismoeti.";
+  }
+};
+
+logoutBtn.onclick = async () => {
+  await client.auth.signOut();
+  currentUser = null;
+  ownProfile = null;
+  claimableProfile = null;
+  updateAuthUI();
+};
+
+authModal.addEventListener("click", e => { if (e.target === authModal) closeAuth(); });
+
+client.auth.onAuthStateChange(async (_event, session) => {
+  currentUser = session?.user || null;
+  if (currentUser) closeAuth();
+  await refreshAuthState();
+});
 document.getElementById("closeProfileBtn").onclick = closeProfile;
 modal.addEventListener("click", e => { if(e.target === modal) closeForm(); });
 profileModal.addEventListener("click", e => { if(e.target === profileModal) closeProfile(); });
@@ -541,6 +746,13 @@ form.addEventListener("submit", async e => {
     return;
   }
 
+  if (!currentUser) {
+    alert("Tu sesión terminó. Vuelve a entrar con tu correo.");
+    closeForm();
+    openAuth();
+    return;
+  }
+
   const payload = {
     nombre: document.getElementById("nombre").value.trim(),
     apodo: document.getElementById("apodo").value.trim() || null,
@@ -553,24 +765,35 @@ form.addEventListener("submit", async e => {
     familia: document.getElementById("familia").value.trim() || null,
     hobbies: document.getElementById("hobbies").value.trim() || null,
     dato_curioso: document.getElementById("dato_curioso").value.trim() || null,
-    foto_url: fotoUrl
+    foto_url: fotoUrl || (editingMode === "edit" ? ownProfile?.foto_url || null : null),
+    user_id: currentUser.id
   };
 
   saveBtn.textContent = "Guardando…";
 
-  const { error } = await client.from("perfiles").insert(payload);
+  let result;
+  if (editingMode === "edit" && ownProfile) {
+    result = await client
+      .from("perfiles")
+      .update(payload)
+      .eq("id", ownProfile.id);
+  } else {
+    result = await client
+      .from("perfiles")
+      .insert(payload);
+  }
 
   saveBtn.disabled = false;
   saveBtn.textContent = "Guardar presentación";
 
-  if (error) {
-    console.error(error);
-    alert("No se pudo guardar: " + error.message);
+  if (result.error) {
+    console.error(result.error);
+    alert("No se pudo guardar: " + result.error.message);
     return;
   }
 
   closeForm();
-  showStatus("✅ Presentación guardada correctamente.", "ok");
+  showStatus(editingMode === "edit" ? "✅ Perfil actualizado correctamente." : "✅ Presentación guardada correctamente.", "ok");
   await loadProfiles();
 });
 
