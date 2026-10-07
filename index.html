@@ -108,6 +108,8 @@ footer{padding:28px 0 10px;color:var(--muted);text-align:center;font-size:13px}
     <p>¿Quién es quién? Para volver a ubicarnos sin leer 800 mensajes del grupo 😅</p>
     <div class="stats">
       <div class="stat"><strong id="countAll">0</strong> personas registradas</div>
+      <div class="stat">👀 <strong id="visitsTotal">0</strong> visitas totales</div>
+      <div class="stat">📅 <strong id="visitsToday">0</strong> hoy</div>
       <div class="stat">Generación reunida otra vez ✨</div>
     </div>
   </section>
@@ -278,6 +280,8 @@ const logoutBtn = document.getElementById("logoutBtn");
 const ctaTitle = document.getElementById("ctaTitle");
 const ctaText = document.getElementById("ctaText");
 const sessionInfo = document.getElementById("sessionInfo");
+const visitsTotal = document.getElementById("visitsTotal");
+const visitsToday = document.getElementById("visitsToday");
 
 let currentUser = null;
 let ownProfile = null;
@@ -434,6 +438,51 @@ async function uploadPhoto(file) {
 }
 
 
+
+async function updateVisitCounters() {
+  const { count: totalCount, error: totalError } = await client
+    .from("visitas")
+    .select("id", { count: "exact", head: true });
+
+  const start = new Date();
+  start.setHours(0, 0, 0, 0);
+
+  const { count: todayCount, error: todayError } = await client
+    .from("visitas")
+    .select("id", { count: "exact", head: true })
+    .gte("created_at", start.toISOString());
+
+  if (!totalError) visitsTotal.textContent = totalCount ?? 0;
+  if (!todayError) visitsToday.textContent = todayCount ?? 0;
+}
+
+async function registerVisitOnce() {
+  const sessionKey = "chismoeti_visit_registered_v1";
+  if (sessionStorage.getItem(sessionKey)) {
+    await updateVisitCounters();
+    return;
+  }
+
+  let visitorName = null;
+  let visitorType = "anonimo";
+  let visitorUserId = null;
+
+  if (currentUser) {
+    visitorType = "autenticado";
+    visitorUserId = currentUser.id;
+    visitorName = ownProfile?.nombre || claimableProfile?.nombre || currentUser.email || null;
+  }
+
+  const { error } = await client.from("visitas").insert({
+    user_id: visitorUserId,
+    nombre: visitorName,
+    tipo: visitorType
+  });
+
+  if (!error) sessionStorage.setItem(sessionKey, "1");
+  await updateVisitCounters();
+}
+
 async function refreshAuthState() {
   const { data: { session } } = await client.auth.getSession();
   currentUser = session?.user || null;
@@ -530,6 +579,7 @@ async function loadProfiles() {
   showStatus("✅ Conectado a Supabase. Los perfiles que agregues aquí serán compartidos entre todos los dispositivos.", "ok");
   render();
   await refreshAuthState();
+  await registerVisitOnce();
 }
 
 
@@ -695,6 +745,7 @@ client.auth.onAuthStateChange(async (_event, session) => {
   currentUser = session?.user || null;
   if (currentUser) closeAuth();
   await refreshAuthState();
+  await updateVisitCounters();
 });
 document.getElementById("closeProfileBtn").onclick = closeProfile;
 modal.addEventListener("click", e => { if(e.target === modal) closeForm(); });
