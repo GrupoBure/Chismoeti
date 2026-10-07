@@ -732,8 +732,13 @@ async function loadProfiles() {
 
   profiles = data || [];
   showStatus("✅ Conectado a Supabase. Los perfiles que agregues aquí serán compartidos entre todos los dispositivos.", "ok");
-  render();
+
+  await loadCools();
   await refreshAuthState();
+  rebuildCoolState();
+  render();
+  updateAuthUI();
+
   await registerVisitOnce();
 }
 
@@ -897,6 +902,10 @@ logoutBtn.onclick = async () => {
   currentUser = null;
   ownProfile = null;
   claimableProfile = null;
+
+  await loadCools();
+  rebuildCoolState();
+  render();
   updateAuthUI();
 };
 
@@ -905,7 +914,13 @@ authModal.addEventListener("click", e => { if (e.target === authModal) closeAuth
 client.auth.onAuthStateChange(async (_event, session) => {
   currentUser = session?.user || null;
   if (currentUser) closeAuth();
+
   await refreshAuthState();
+  await loadCools();
+  rebuildCoolState();
+  render();
+  updateAuthUI();
+
   await updateVisitCounters();
 });
 document.getElementById("closeProfileBtn").onclick = closeProfile;
