@@ -127,6 +127,7 @@ footer{padding:28px 0 10px;color:var(--muted);text-align:center;font-size:13px}
   </section>
 
   <div id="statusBox" class="notice info">Conectando con la base de datos…</div>
+  <div id="visitDebug" class="notice info" style="display:none"></div>
 
   <div class="toolbar">
     <input id="search" class="search" placeholder="🔎 Buscar por nombre, apodo, trabajo, ciudad..." />
@@ -282,6 +283,7 @@ const ctaText = document.getElementById("ctaText");
 const sessionInfo = document.getElementById("sessionInfo");
 const visitsTotal = document.getElementById("visitsTotal");
 const visitsToday = document.getElementById("visitsToday");
+const visitDebug = document.getElementById("visitDebug");
 
 let currentUser = null;
 let ownProfile = null;
@@ -439,27 +441,70 @@ async function uploadPhoto(file) {
 
 
 
+
+function showVisitDebug(message, type="info") {
+  visitDebug.style.display = "block";
+  visitDebug.className = "notice " + type;
+  visitDebug.textContent = message;
+  console.log("[Chismoeti visitas]", message);
+}
+
 async function updateVisitCounters() {
-  const { count: totalCount, error: totalError } = await client
-    .from("visitas")
-    .select("id", { count: "exact", head: true });
+  try {
+    const totalResult = await client
+      .from("visitas")
+      .select("id", { count: "exact", head: true });
 
-  const start = new Date();
-  start.setHours(0, 0, 0, 0);
+    if (totalResult.error) {
+      showVisitDebug(
+        "❌ Error al LEER visitas totales: " +
+        totalResult.error.message +
+        " | code: " + (totalResult.error.code || "sin código"),
+        "error"
+      );
+      return false;
+    }
 
-  const { count: todayCount, error: todayError } = await client
-    .from("visitas")
-    .select("id", { count: "exact", head: true })
-    .gte("created_at", start.toISOString());
+    const start = new Date();
+    start.setHours(0, 0, 0, 0);
 
-  if (!totalError) visitsTotal.textContent = totalCount ?? 0;
-  if (!todayError) visitsToday.textContent = todayCount ?? 0;
+    const todayResult = await client
+      .from("visitas")
+      .select("id", { count: "exact", head: true })
+      .gte("created_at", start.toISOString());
+
+    if (todayResult.error) {
+      showVisitDebug(
+        "❌ Error al LEER visitas de hoy: " +
+        todayResult.error.message +
+        " | code: " + (todayResult.error.code || "sin código"),
+        "error"
+      );
+      return false;
+    }
+
+    visitsTotal.textContent = totalResult.count ?? 0;
+    visitsToday.textContent = todayResult.count ?? 0;
+    return true;
+  } catch (err) {
+    showVisitDebug("❌ Excepción leyendo visitas: " + err.message, "error");
+    return false;
+  }
 }
 
 async function registerVisitOnce() {
   const sessionKey = "chismoeti_visit_registered_v1";
+
+  // En modo diagnóstico siempre comprobamos primero que podamos leer.
+  const canRead = await updateVisitCounters();
+  if (!canRead) return;
+
   if (sessionStorage.getItem(sessionKey)) {
-    await updateVisitCounters();
+    showVisitDebug(
+      "ℹ️ Esta sesión ya estaba marcada como registrada. Lectura OK; contador actual: " +
+      visitsTotal.textContent + " total / " + visitsToday.textContent + " hoy.",
+      "info"
+    );
     return;
   }
 
@@ -473,14 +518,41 @@ async function registerVisitOnce() {
     visitorName = ownProfile?.nombre || claimableProfile?.nombre || currentUser.email || null;
   }
 
-  const { error } = await client.from("visitas").insert({
-    user_id: visitorUserId,
-    nombre: visitorName,
-    tipo: visitorType
-  });
+  try {
+    const insertResult = await client
+      .from("visitas")
+      .insert({
+        user_id: visitorUserId,
+        nombre: visitorName,
+        tipo: visitorType
+      })
+      .select("id, created_at, tipo")
+      .single();
 
-  if (!error) sessionStorage.setItem(sessionKey, "1");
-  await updateVisitCounters();
+    if (insertResult.error) {
+      showVisitDebug(
+        "❌ Error al REGISTRAR visita: " +
+        insertResult.error.message +
+        " | code: " + (insertResult.error.code || "sin código") +
+        " | details: " + (insertResult.error.details || "sin detalles"),
+        "error"
+      );
+      return;
+    }
+
+    sessionStorage.setItem(sessionKey, "1");
+    await updateVisitCounters();
+
+    showVisitDebug(
+      "✅ Diagnóstico OK: visita registrada con id " +
+      insertResult.data.id +
+      ". Contador: " + visitsTotal.textContent +
+      " total / " + visitsToday.textContent + " hoy.",
+      "ok"
+    );
+  } catch (err) {
+    showVisitDebug("❌ Excepción registrando visita: " + err.message, "error");
+  }
 }
 
 async function refreshAuthState() {
@@ -546,15 +618,7 @@ async function claimExistingProfile() {
     return;
   }
 
-  await document.addEventListener("keydown", e => {
-  if (e.key === "Escape") {
-    closeForm();
-    closeAuth();
-    closeProfile();
-  }
-});
-
-loadProfiles();
+  await loadProfiles();
   await refreshAuthState();
   alert("✅ Perfil vinculado. A partir de ahora sólo tú puedes editarlo.");
 }
@@ -847,6 +911,14 @@ form.addEventListener("submit", async e => {
   closeForm();
   showStatus(editingMode === "edit" ? "✅ Perfil actualizado correctamente." : "✅ Presentación guardada correctamente.", "ok");
   await loadProfiles();
+});
+
+document.addEventListener("keydown", e => {
+  if (e.key === "Escape") {
+    closeForm();
+    closeAuth();
+    closeProfile();
+  }
 });
 
 loadProfiles();
