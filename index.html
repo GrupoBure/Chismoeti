@@ -3,24 +3,17 @@
 <head>
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-<title>Setinas / Setinos — ¿Quién es quién?</title>
+<title>Chismoeti — ¿Quién es quién?</title>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <style>
 :root{
-  --bg:#f6f7fb;
-  --card:#ffffff;
-  --text:#1f2937;
-  --muted:#6b7280;
-  --primary:#6d28d9;
-  --primary2:#8b5cf6;
-  --border:#e5e7eb;
-  --chip:#ede9fe;
+  --bg:#f6f7fb;--card:#fff;--text:#1f2937;--muted:#6b7280;
+  --primary:#6d28d9;--border:#e5e7eb;--chip:#ede9fe;
 }
 *{box-sizing:border-box}
 body{
-  margin:0;
-  font-family:system-ui,-apple-system,Segoe UI,Roboto,Arial,sans-serif;
-  background:linear-gradient(180deg,#f5f3ff 0,#f6f7fb 220px);
-  color:var(--text)
+  margin:0;font-family:system-ui,-apple-system,Segoe UI,Roboto,Arial,sans-serif;
+  background:linear-gradient(180deg,#f5f3ff 0,#f6f7fb 220px);color:var(--text)
 }
 .container{max-width:1100px;margin:auto;padding:20px}
 .hero{
@@ -30,98 +23,77 @@ body{
 }
 .hero h1{margin:0 0 8px;font-size:clamp(28px,5vw,46px)}
 .hero p{margin:0;opacity:.92;font-size:16px}
-.hero .stats{display:flex;gap:12px;flex-wrap:wrap;margin-top:18px}
-.stat{background:rgba(255,255,255,.15);padding:10px 14px;border-radius:14px;backdrop-filter:blur(8px)}
+.stats{display:flex;gap:12px;flex-wrap:wrap;margin-top:18px}
+.stat{background:rgba(255,255,255,.15);padding:10px 14px;border-radius:14px}
 .primary-cta{
-  display:grid;grid-template-columns:1fr auto;gap:18px;align-items:center;
-  background:#fff;border:2px solid #c4b5fd;border-radius:22px;padding:20px 22px;
-  margin:18px 0 22px;box-shadow:0 12px 30px rgba(91,33,182,.10)
+  display:grid;grid-template-columns:1fr auto;gap:18px;align-items:center;background:#fff;
+  border:2px solid #c4b5fd;border-radius:22px;padding:20px 22px;margin:18px 0 22px;
+  box-shadow:0 12px 30px rgba(91,33,182,.10)
 }
 .primary-cta h2{margin:0 0 5px;font-size:24px;color:#4c1d95}
 .primary-cta p{margin:0;color:#6b7280;line-height:1.45}
-.btn.big{
-  font-size:18px;padding:16px 24px;border-radius:16px;min-width:220px;
-  box-shadow:0 10px 20px rgba(109,40,217,.20)
-}
-.toolbar{display:grid;grid-template-columns:1fr;gap:12px;margin:18px 0}
-.search{width:100%;padding:14px 16px;border:1px solid var(--border);border-radius:14px;font-size:16px;background:#fff}
 .btn{
   border:none;border-radius:14px;padding:13px 18px;font-weight:700;cursor:pointer;
   background:var(--primary);color:#fff;font-size:15px
 }
-.btn:hover{filter:brightness(.96)}
+.btn.big{font-size:18px;padding:16px 24px;min-width:220px;box-shadow:0 10px 20px rgba(109,40,217,.2)}
 .btn.secondary{background:#fff;color:var(--primary);border:1px solid #c4b5fd}
+.toolbar{margin:18px 0}
+.search{width:100%;padding:14px 16px;border:1px solid var(--border);border-radius:14px;font-size:16px}
 .filters{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:18px}
-.filter{
-  border:1px solid var(--border);background:#fff;border-radius:999px;padding:9px 13px;cursor:pointer
-}
+.filter{border:1px solid var(--border);background:#fff;border-radius:999px;padding:9px 13px;cursor:pointer}
 .filter.active{background:var(--primary);color:#fff;border-color:var(--primary)}
 .grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:16px}
-.card{
-  background:var(--card);border:1px solid var(--border);border-radius:20px;padding:18px;
-  box-shadow:0 8px 22px rgba(15,23,42,.06)
-}
+.card{background:#fff;border:1px solid var(--border);border-radius:20px;padding:18px;box-shadow:0 8px 22px rgba(15,23,42,.06)}
 .avatar{
-  width:72px;height:72px;border-radius:50%;display:grid;place-items:center;font-size:28px;
-  font-weight:800;background:var(--chip);color:var(--primary);overflow:hidden;margin-bottom:12px
+  width:72px;height:72px;border-radius:50%;display:grid;place-items:center;font-size:28px;font-weight:800;
+  background:var(--chip);color:var(--primary);overflow:hidden;margin-bottom:12px
 }
 .avatar img{width:100%;height:100%;object-fit:cover}
 .name{font-size:22px;font-weight:800;margin:0 0 3px}
 .meta{color:var(--muted);font-size:14px;margin-bottom:10px}
-.badge{display:inline-block;background:var(--chip);color:#5b21b6;border-radius:999px;padding:5px 9px;font-size:12px;font-weight:800;margin-right:5px}
+.badge{display:inline-block;background:var(--chip);color:#5b21b6;border-radius:999px;padding:5px 9px;font-size:12px;font-weight:800;margin:2px 5px 2px 0}
 .desc{line-height:1.5;margin:12px 0;color:#374151}
 .small{font-size:13px;color:var(--muted)}
-.card-actions{display:flex;gap:8px;margin-top:12px}
-.card-actions button{flex:1}
-.empty{text-align:center;padding:50px 20px;color:var(--muted)}
+.empty,.loading{text-align:center;padding:45px 20px;color:var(--muted)}
 .modal{
   position:fixed;inset:0;background:rgba(15,23,42,.52);display:none;align-items:center;justify-content:center;
   padding:18px;z-index:10
 }
 .modal.show{display:flex}
-.panel{
-  width:min(720px,100%);max-height:92vh;overflow:auto;background:#fff;border-radius:22px;padding:22px;
-  box-shadow:0 24px 60px rgba(0,0,0,.24)
-}
+.panel{width:min(720px,100%);max-height:92vh;overflow:auto;background:#fff;border-radius:22px;padding:22px}
 .panel h2{margin-top:0}
 .form-grid{display:grid;grid-template-columns:1fr 1fr;gap:12px}
 .field{display:flex;flex-direction:column;gap:6px}
 .field.full{grid-column:1/-1}
 label{font-size:13px;font-weight:700;color:#374151}
-input,select,textarea{
-  width:100%;border:1px solid var(--border);border-radius:12px;padding:11px 12px;font:inherit;background:#fff
-}
+input,select,textarea{width:100%;border:1px solid var(--border);border-radius:12px;padding:11px 12px;font:inherit;background:#fff}
 textarea{min-height:90px;resize:vertical}
 .footer-actions{display:flex;justify-content:flex-end;gap:10px;margin-top:16px}
-.notice{
-  margin:14px 0;background:#fff7ed;border:1px solid #fed7aa;color:#9a3412;
-  padding:12px 14px;border-radius:14px;font-size:13px
-}
+.notice{margin:14px 0;padding:12px 14px;border-radius:14px;font-size:13px}
+.notice.info{background:#eff6ff;border:1px solid #bfdbfe;color:#1e40af}
+.notice.ok{background:#ecfdf5;border:1px solid #a7f3d0;color:#065f46}
+.notice.error{background:#fef2f2;border:1px solid #fecaca;color:#991b1b}
 footer{padding:28px 0 10px;color:var(--muted);text-align:center;font-size:13px}
+.contact a{color:#5b21b6;text-decoration:none}
 @media(max-width:700px){
   .primary-cta{grid-template-columns:1fr}
   .btn.big{width:100%;min-width:0}
-  .toolbar{grid-template-columns:1fr}
   .form-grid{grid-template-columns:1fr}
   .field.full{grid-column:auto}
-  .hero{padding:24px 20px}
 }
 </style>
 </head>
 <body>
 <div class="container">
   <section class="hero">
-    <h1>Setinas / Setinos 👋</h1>
-    <p>¿Quién es quién? Un espacio para volver a ubicarnos sin leer 800 mensajes del grupo 😅</p>
+    <h1>Chismoeti 👋</h1>
+    <p>¿Quién es quién? Para volver a ubicarnos sin leer 800 mensajes del grupo 😅</p>
     <div class="stats">
       <div class="stat"><strong id="countAll">0</strong> personas registradas</div>
       <div class="stat">Generación reunida otra vez ✨</div>
     </div>
   </section>
-
-  <div class="notice">
-    Demo de prueba: la información se guarda solamente en este navegador. Si borras los datos del navegador, se pierde.
-  </div>
 
   <section class="primary-cta">
     <div>
@@ -130,6 +102,8 @@ footer{padding:28px 0 10px;color:var(--muted);text-align:center;font-size:13px}
     </div>
     <button class="btn big" id="addBtn">👋 Preséntate aquí</button>
   </section>
+
+  <div id="statusBox" class="notice info">Conectando con la base de datos…</div>
 
   <div class="toolbar">
     <input id="search" class="search" placeholder="🔎 Buscar por nombre, apodo, trabajo, ciudad..." />
@@ -143,6 +117,7 @@ footer{padding:28px 0 10px;color:var(--muted);text-align:center;font-size:13px}
     <button class="filter" data-group="D">Grupo D</button>
   </div>
 
+  <div id="loading" class="loading">Cargando perfiles…</div>
   <div id="grid" class="grid"></div>
   <div id="empty" class="empty" style="display:none">No encontré a nadie con ese criterio.</div>
 
@@ -151,209 +126,230 @@ footer{padding:28px 0 10px;color:var(--muted);text-align:center;font-size:13px}
 
 <div class="modal" id="modal">
   <div class="panel">
-    <h2 id="formTitle">Agregar presentación</h2>
+    <h2>Agregar mi presentación</h2>
     <form id="profileForm">
-      <input type="hidden" id="profileId">
       <div class="form-grid">
         <div class="field">
           <label>Nombre *</label>
-          <input id="name" required placeholder="Ej. Víctor">
+          <input id="nombre" required maxlength="100" placeholder="Ej. Víctor">
         </div>
         <div class="field">
           <label>Apodo de la secundaria</label>
-          <input id="nickname" placeholder="Ej. Toy">
+          <input id="apodo" maxlength="80" placeholder="Ej. Toy">
         </div>
         <div class="field">
           <label>Grupo *</label>
-          <select id="group" required>
+          <select id="grupo" required>
             <option value="">Selecciona</option>
             <option>A</option><option>B</option><option>C</option><option>D</option>
           </select>
         </div>
         <div class="field">
           <label>Ciudad / Estado</label>
-          <input id="location" placeholder="Ej. Tlalnepantla, Edo. Méx.">
+          <input id="ubicacion" maxlength="120" placeholder="Ej. Tlalnepantla, Edo. Méx.">
         </div>
+
+        <div class="field">
+          <label>Teléfono (opcional)</label>
+          <input id="telefono" type="tel" inputmode="tel"
+                 pattern="[0-9+()\- ]{7,25}"
+                 maxlength="25"
+                 placeholder="+52 55 1234 5678">
+          <div class="small">Sólo números, espacios, +, guiones y paréntesis.</div>
+        </div>
+        <div class="field">
+          <label>Correo (opcional)</label>
+          <input id="correo" type="email" maxlength="150" placeholder="nombre@correo.com">
+        </div>
+
         <div class="field full">
           <label>¿Qué pasó conmigo después de la secundaria?</label>
-          <textarea id="afterSchool" placeholder="Estudios, cambios, aventuras..."></textarea>
+          <textarea id="despues_secundaria" maxlength="1500" placeholder="Estudios, cambios, aventuras..."></textarea>
         </div>
         <div class="field full">
           <label>¿A qué me dedico actualmente?</label>
-          <input id="job" placeholder="Ej. Diseño, docencia, administración...">
+          <input id="trabajo" maxlength="200" placeholder="Ej. Diseño, docencia, administración...">
         </div>
         <div class="field">
           <label>Situación familiar (opcional)</label>
-          <input id="family" placeholder="Ej. Casado, soltera, con hijos...">
+          <input id="familia" maxlength="150" placeholder="Ej. Casado, soltera, con hijos...">
         </div>
         <div class="field">
           <label>Pasatiempos</label>
-          <input id="hobbies" placeholder="Ej. Cine, bici, viajes, museos...">
+          <input id="hobbies" maxlength="250" placeholder="Ej. Cine, bici, viajes, museos...">
         </div>
         <div class="field full">
           <label>Algo que probablemente nadie recuerda de mí</label>
-          <textarea id="memory" placeholder="Una anécdota, detalle o confesión no tan incriminatoria 😂"></textarea>
+          <textarea id="dato_curioso" maxlength="700" placeholder="Una anécdota o detalle perdido en el tiempo 😂"></textarea>
         </div>
         <div class="field full">
-          <label>Foto (opcional)</label>
-          <input id="photo" type="file" accept="image/*">
-          <div class="small">Para la demo se guarda dentro del navegador. Usa una foto ligera.</div>
+          <div class="notice info">
+            📸 La foto la activaremos en el siguiente paso, cuando configuremos el almacenamiento de imágenes.
+          </div>
         </div>
       </div>
       <div class="footer-actions">
         <button type="button" class="btn secondary" id="cancelBtn">Cancelar</button>
-        <button type="submit" class="btn">Guardar presentación</button>
+        <button type="submit" class="btn" id="saveBtn">Guardar presentación</button>
       </div>
     </form>
   </div>
 </div>
 
 <script>
-const KEY = "setinas-setinos-profiles-v1";
-const seed = [
-  {
-    id: crypto.randomUUID(),
-    name:"Víctor", nickname:"Toy", group:"C",
-    location:"Edo. de México",
-    afterSchool:"Después de la secundaria estudié y con los años terminé dedicado a proyectos, diseño y tecnología.",
-    job:"Proyectos, diseño y tecnología",
-    family:"Casado, con un hijo",
-    hobbies:"Tecnología, diseño, viajes y reencontrar gente que ya tenía siglos sin ver 😅",
-    memory:"Soy de la generación de LatinChat y MSN, así que todavía me regreso a leer cuando me pierdo en el grupo 😂",
-    photo:""
-  },
-  {
-    id: crypto.randomUUID(),
-    name:"Jessica Sotelo", nickname:"", group:"A",
-    location:"Zona Viveros",
-    afterSchool:"La vida me llevó por el área educativa y de psicología.",
-    job:"Psicóloga y maestra",
-    family:"", hobbies:"", memory:"", photo:""
-  },
-  {
-    id: crypto.randomUUID(),
-    name:"Natalia", nickname:"", group:"A",
-    location:"Frente a la secundaria",
-    afterSchool:"Sigo viviendo muy cerca de donde empezó toda esta historia.",
-    job:"", family:"", hobbies:"", memory:"", photo:""
-  },
-  {
-    id: crypto.randomUUID(),
-    name:"Omar Álvarez", nickname:"", group:"A",
-    location:"",
-    afterSchool:"Presente para el reencuentro y el chisme.",
-    job:"", family:"", hobbies:"", memory:"Directo al grano 😄", photo:""
-  }
-];
+const SUPABASE_URL = 'https://ojetnxragvscilqvdvqb.supabase.co';
+const SUPABASE_KEY = 'sb_publishable_KY1zWYr0UV_uC4s40DUQkg_Na0IDP96';
+const client = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
 
-let profiles = JSON.parse(localStorage.getItem(KEY) || "null");
-if(!profiles){ profiles = seed; save(); }
-
+let profiles = [];
 let currentGroup = "Todos";
+
 const grid = document.getElementById("grid");
 const empty = document.getElementById("empty");
+const loading = document.getElementById("loading");
 const modal = document.getElementById("modal");
 const form = document.getElementById("profileForm");
+const statusBox = document.getElementById("statusBox");
+const saveBtn = document.getElementById("saveBtn");
 
-function save(){
-  localStorage.setItem(KEY, JSON.stringify(profiles));
+function esc(s="") {
+  return String(s ?? "").replace(/[&<>"']/g,m=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#039;"}[m]));
 }
-function initials(name){
-  return name.trim().split(/\s+/).map(x=>x[0]).slice(0,2).join("").toUpperCase();
+function initials(name="") {
+  return name.trim().split(/\s+/).filter(Boolean).map(x=>x[0]).slice(0,2).join("").toUpperCase() || "?";
 }
-function esc(s=""){
-  return s.replace(/[&<>"']/g,m=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#039;"}[m]));
+function showStatus(message, type="info") {
+  statusBox.className = "notice " + type;
+  statusBox.textContent = message;
 }
-function render(){
+function render() {
   const q = document.getElementById("search").value.toLowerCase().trim();
-  const filtered = profiles.filter(p=>{
-    const inGroup = currentGroup==="Todos" || p.group===currentGroup;
-    const hay = [p.name,p.nickname,p.group,p.location,p.afterSchool,p.job,p.family,p.hobbies,p.memory].join(" ").toLowerCase();
+  const filtered = profiles.filter(p => {
+    const inGroup = currentGroup === "Todos" || p.grupo === currentGroup;
+    const hay = [
+      p.nombre,p.apodo,p.grupo,p.ubicacion,p.despues_secundaria,p.trabajo,
+      p.familia,p.hobbies,p.dato_curioso,p.telefono,p.correo
+    ].join(" ").toLowerCase();
     return inGroup && hay.includes(q);
   });
-  grid.innerHTML = filtered.map(p=>`
+
+  grid.innerHTML = filtered.map(p => `
     <article class="card">
-      <div class="avatar">${p.photo?`<img src="${p.photo}" alt="">`:initials(p.name)}</div>
-      <h3 class="name">${esc(p.name)}</h3>
-      <div class="meta">${p.nickname?`"${esc(p.nickname)}" · `:""}Grupo ${esc(p.group)} ${p.location?`· ${esc(p.location)}`:""}</div>
-      ${p.job?`<span class="badge">💼 ${esc(p.job)}</span>`:""}
-      ${p.family?`<span class="badge">👨‍👩‍👧 ${esc(p.family)}</span>`:""}
-      ${p.afterSchool?`<p class="desc">${esc(p.afterSchool)}</p>`:""}
-      ${p.hobbies?`<p class="small"><strong>Pasatiempos:</strong> ${esc(p.hobbies)}</p>`:""}
-      ${p.memory?`<p class="small"><strong>Dato perdido en el tiempo:</strong> ${esc(p.memory)}</p>`:""}
-      <div class="card-actions">
-        <button class="btn secondary" onclick="editProfile('${p.id}')">Editar</button>
-        <button class="btn secondary" onclick="deleteProfile('${p.id}')">Eliminar</button>
+      <div class="avatar">${p.foto_url ? `<img src="${esc(p.foto_url)}" alt="">` : initials(p.nombre)}</div>
+      <h3 class="name">${esc(p.nombre)}</h3>
+      <div class="meta">
+        ${p.apodo ? `"${esc(p.apodo)}" · ` : ""}
+        Grupo ${esc(p.grupo)} ${p.ubicacion ? `· ${esc(p.ubicacion)}` : ""}
       </div>
+
+      ${p.trabajo ? `<span class="badge">💼 ${esc(p.trabajo)}</span>` : ""}
+      ${p.familia ? `<span class="badge">👨‍👩‍👧 ${esc(p.familia)}</span>` : ""}
+
+      ${p.despues_secundaria ? `<p class="desc">${esc(p.despues_secundaria)}</p>` : ""}
+      ${p.hobbies ? `<p class="small"><strong>Pasatiempos:</strong> ${esc(p.hobbies)}</p>` : ""}
+      ${p.dato_curioso ? `<p class="small"><strong>Dato perdido en el tiempo:</strong> ${esc(p.dato_curioso)}</p>` : ""}
+
+      ${(p.telefono || p.correo) ? `
+        <p class="small contact">
+          ${p.telefono ? `<strong>📱 Tel:</strong> <a href="tel:${esc(p.telefono)}">${esc(p.telefono)}</a><br>` : ""}
+          ${p.correo ? `<strong>✉️ Correo:</strong> <a href="mailto:${esc(p.correo)}">${esc(p.correo)}</a>` : ""}
+        </p>` : ""}
     </article>
   `).join("");
+
   empty.style.display = filtered.length ? "none" : "block";
   document.getElementById("countAll").textContent = profiles.length;
 }
-function openForm(p=null){
-  form.reset();
-  document.getElementById("formTitle").textContent = p ? "Editar presentación" : "Agregar presentación";
-  document.getElementById("profileId").value = p?.id || "";
-  if(p){
-    ["name","nickname","group","location","afterSchool","job","family","hobbies","memory"].forEach(k=>{
-      document.getElementById(k).value = p[k] || "";
-    });
+
+async function loadProfiles() {
+  loading.style.display = "block";
+  grid.innerHTML = "";
+  const { data, error } = await client
+    .from("perfiles")
+    .select("*")
+    .order("created_at", { ascending: false });
+
+  loading.style.display = "none";
+
+  if (error) {
+    console.error(error);
+    showStatus("No pude leer la base de datos: " + error.message, "error");
+    return;
   }
+
+  profiles = data || [];
+  showStatus("✅ Conectado a Supabase. Los perfiles que agregues aquí serán compartidos entre todos los dispositivos.", "ok");
+  render();
+}
+
+function openForm() {
+  form.reset();
   modal.classList.add("show");
 }
-function closeForm(){ modal.classList.remove("show"); }
-window.editProfile = id => openForm(profiles.find(p=>p.id===id));
-window.deleteProfile = id => {
-  if(confirm("¿Eliminar esta presentación de la demo?")){
-    profiles = profiles.filter(p=>p.id!==id); save(); render();
-  }
-};
+function closeForm() {
+  modal.classList.remove("show");
+}
 
-document.getElementById("addBtn").onclick = ()=>openForm();
+document.getElementById("addBtn").onclick = openForm;
 document.getElementById("cancelBtn").onclick = closeForm;
-modal.addEventListener("click", e=>{ if(e.target===modal) closeForm(); });
+modal.addEventListener("click", e => { if(e.target === modal) closeForm(); });
 document.getElementById("search").addEventListener("input", render);
 
-document.querySelectorAll(".filter").forEach(b=>{
-  b.onclick=()=>{
-    document.querySelectorAll(".filter").forEach(x=>x.classList.remove("active"));
+document.querySelectorAll(".filter").forEach(b => {
+  b.onclick = () => {
+    document.querySelectorAll(".filter").forEach(x => x.classList.remove("active"));
     b.classList.add("active");
-    currentGroup=b.dataset.group; render();
-  }
-});
-
-form.addEventListener("submit", async e=>{
-  e.preventDefault();
-  const id = document.getElementById("profileId").value;
-  const old = profiles.find(p=>p.id===id);
-  let photo = old?.photo || "";
-  const file = document.getElementById("photo").files[0];
-  if(file){
-    photo = await new Promise(resolve=>{
-      const r = new FileReader();
-      r.onload = ()=>resolve(r.result);
-      r.readAsDataURL(file);
-    });
-  }
-  const p = {
-    id: id || crypto.randomUUID(),
-    name: document.getElementById("name").value.trim(),
-    nickname: document.getElementById("nickname").value.trim(),
-    group: document.getElementById("group").value,
-    location: document.getElementById("location").value.trim(),
-    afterSchool: document.getElementById("afterSchool").value.trim(),
-    job: document.getElementById("job").value.trim(),
-    family: document.getElementById("family").value.trim(),
-    hobbies: document.getElementById("hobbies").value.trim(),
-    memory: document.getElementById("memory").value.trim(),
-    photo
+    currentGroup = b.dataset.group;
+    render();
   };
-  if(id) profiles = profiles.map(x=>x.id===id?p:x);
-  else profiles.unshift(p);
-  save(); closeForm(); render();
 });
 
-render();
+form.addEventListener("submit", async e => {
+  e.preventDefault();
+
+  const telefono = document.getElementById("telefono");
+  if (telefono.value && !telefono.checkValidity()) {
+    telefono.setCustomValidity("Escribe un teléfono válido. Usa sólo números, espacios, +, guiones y paréntesis.");
+    telefono.reportValidity();
+    telefono.setCustomValidity("");
+    return;
+  }
+
+  const payload = {
+    nombre: document.getElementById("nombre").value.trim(),
+    apodo: document.getElementById("apodo").value.trim() || null,
+    grupo: document.getElementById("grupo").value,
+    ubicacion: document.getElementById("ubicacion").value.trim() || null,
+    telefono: document.getElementById("telefono").value.trim() || null,
+    correo: document.getElementById("correo").value.trim() || null,
+    despues_secundaria: document.getElementById("despues_secundaria").value.trim() || null,
+    trabajo: document.getElementById("trabajo").value.trim() || null,
+    familia: document.getElementById("familia").value.trim() || null,
+    hobbies: document.getElementById("hobbies").value.trim() || null,
+    dato_curioso: document.getElementById("dato_curioso").value.trim() || null,
+    foto_url: null
+  };
+
+  saveBtn.disabled = true;
+  saveBtn.textContent = "Guardando…";
+
+  const { error } = await client.from("perfiles").insert(payload);
+
+  saveBtn.disabled = false;
+  saveBtn.textContent = "Guardar presentación";
+
+  if (error) {
+    console.error(error);
+    alert("No se pudo guardar: " + error.message);
+    return;
+  }
+
+  closeForm();
+  showStatus("✅ Presentación guardada correctamente.", "ok");
+  await loadProfiles();
+});
+
+loadProfiles();
 </script>
 </body>
 </html>
