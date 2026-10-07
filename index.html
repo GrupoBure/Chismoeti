@@ -198,9 +198,9 @@ footer{padding:28px 0 10px;color:var(--muted);text-align:center;font-size:13px}
           <textarea id="dato_curioso" maxlength="700" placeholder="Una anécdota o detalle perdido en el tiempo 😂"></textarea>
         </div>
         <div class="field full">
-          <div class="notice info">
-            📸 La foto la activaremos en el siguiente paso, cuando configuremos el almacenamiento de imágenes.
-          </div>
+          <label>Foto de perfil (opcional)</label>
+          <input id="foto" type="file" accept="image/jpeg,image/png,image/webp">
+          <div class="small">JPG, PNG o WebP. Máximo 2 MB.</div>
         </div>
       </div>
       <div class="footer-actions">
@@ -340,6 +340,50 @@ function render() {
   document.getElementById("countAll").textContent = profiles.length;
 }
 
+function safeFileName(name="foto") {
+  return name
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .toLowerCase()
+    .replace(/[^a-z0-9._-]/g, "-")
+    .replace(/-+/g, "-");
+}
+
+async function uploadPhoto(file) {
+  if (!file) return null;
+
+  const allowed = ["image/jpeg", "image/png", "image/webp"];
+  if (!allowed.includes(file.type)) {
+    throw new Error("La foto debe ser JPG, PNG o WebP.");
+  }
+
+  if (file.size > 2 * 1024 * 1024) {
+    throw new Error("La foto pesa más de 2 MB.");
+  }
+
+  const extension = (file.name.split(".").pop() || "jpg").toLowerCase();
+  const base = safeFileName(file.name.replace(/\.[^.]+$/, "")) || "foto";
+  const unique = `${Date.now()}-${crypto.randomUUID()}-${base}.${extension}`;
+
+  const { error: uploadError } = await client
+    .storage
+    .from("fotos_perfil")
+    .upload(unique, file, {
+      cacheControl: "3600",
+      upsert: false,
+      contentType: file.type
+    });
+
+  if (uploadError) throw uploadError;
+
+  const { data } = client
+    .storage
+    .from("fotos_perfil")
+    .getPublicUrl(unique);
+
+  return data.publicUrl;
+}
+
 async function loadProfiles() {
   loading.style.display = "block";
   grid.innerHTML = "";
@@ -405,6 +449,22 @@ form.addEventListener("submit", async e => {
     return;
   }
 
+  let fotoUrl = null;
+  const fotoInput = document.getElementById("foto");
+  const fotoFile = fotoInput.files[0] || null;
+
+  saveBtn.disabled = true;
+  saveBtn.textContent = fotoFile ? "Subiendo foto…" : "Guardando…";
+
+  try {
+    fotoUrl = await uploadPhoto(fotoFile);
+  } catch (err) {
+    saveBtn.disabled = false;
+    saveBtn.textContent = "Guardar presentación";
+    alert("No se pudo subir la foto: " + err.message);
+    return;
+  }
+
   const payload = {
     nombre: document.getElementById("nombre").value.trim(),
     apodo: document.getElementById("apodo").value.trim() || null,
@@ -417,10 +477,9 @@ form.addEventListener("submit", async e => {
     familia: document.getElementById("familia").value.trim() || null,
     hobbies: document.getElementById("hobbies").value.trim() || null,
     dato_curioso: document.getElementById("dato_curioso").value.trim() || null,
-    foto_url: null
+    foto_url: fotoUrl
   };
 
-  saveBtn.disabled = true;
   saveBtn.textContent = "Guardando…";
 
   const { error } = await client.from("perfiles").insert(payload);
