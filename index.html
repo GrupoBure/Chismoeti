@@ -62,6 +62,16 @@ body{
 }
 .modal.show{display:flex}
 .panel{width:min(720px,100%);max-height:92vh;overflow:auto;background:#fff;border-radius:22px;padding:22px}
+.profile-panel{width:min(760px,100%)}
+.profile-head{display:flex;gap:18px;align-items:center;margin-bottom:18px}
+.profile-photo{width:110px;height:110px;border-radius:50%;overflow:hidden;background:var(--chip);display:grid;place-items:center;font-size:36px;font-weight:800;color:var(--primary);flex:0 0 auto}
+.profile-photo img{width:100%;height:100%;object-fit:cover}
+.profile-title h2{margin:0 0 4px}
+.profile-title .meta{margin:0}
+.profile-section{padding:14px 0;border-top:1px solid var(--border)}
+.profile-section h4{margin:0 0 6px;color:#4c1d95}
+.profile-section p{margin:0;line-height:1.55}
+.profile-actions{display:flex;justify-content:flex-end;margin-top:18px}
 .panel h2{margin-top:0}
 .form-grid{display:grid;grid-template-columns:1fr 1fr;gap:12px}
 .field{display:flex;flex-direction:column;gap:6px}
@@ -211,6 +221,15 @@ footer{padding:28px 0 10px;color:var(--muted);text-align:center;font-size:13px}
   </div>
 </div>
 
+<div class="modal" id="profileModal">
+  <div class="panel profile-panel">
+    <div id="profileContent"></div>
+    <div class="profile-actions">
+      <button type="button" class="btn secondary" id="closeProfileBtn">Cerrar</button>
+    </div>
+  </div>
+</div>
+
 <script>
 const SUPABASE_URL = 'https://ojetnxragvscilqvdvqb.supabase.co';
 const SUPABASE_KEY = 'sb_publishable_KY1zWYr0UV_uC4s40DUQkg_Na0IDP96';
@@ -223,6 +242,8 @@ const grid = document.getElementById("grid");
 const empty = document.getElementById("empty");
 const loading = document.getElementById("loading");
 const modal = document.getElementById("modal");
+const profileModal = document.getElementById("profileModal");
+const profileContent = document.getElementById("profileContent");
 const form = document.getElementById("profileForm");
 const statusBox = document.getElementById("statusBox");
 const saveBtn = document.getElementById("saveBtn");
@@ -320,19 +341,10 @@ function render() {
         ${p.apodo ? `"${esc(p.apodo)}" · ` : ""}
         Grupo ${esc(p.grupo)} ${p.ubicacion ? `· ${esc(p.ubicacion)}` : ""}
       </div>
-
       ${p.trabajo ? `<span class="badge">💼 ${esc(p.trabajo)}</span>` : ""}
-      ${p.familia ? `<span class="badge">👨‍👩‍👧 ${esc(p.familia)}</span>` : ""}
-
-      ${p.despues_secundaria ? `<p class="desc">${esc(p.despues_secundaria)}</p>` : ""}
-      ${p.hobbies ? `<p class="small"><strong>Pasatiempos:</strong> ${esc(p.hobbies)}</p>` : ""}
-      ${p.dato_curioso ? `<p class="small"><strong>Dato perdido en el tiempo:</strong> ${esc(p.dato_curioso)}</p>` : ""}
-
-      ${(p.telefono || p.correo) ? `
-        <p class="small contact">
-          ${p.telefono ? `<strong>📱 Tel:</strong> <a href="tel:${esc(p.telefono)}">${esc(p.telefono)}</a><br>` : ""}
-          ${p.correo ? `<strong>✉️ Correo:</strong> <a href="mailto:${esc(p.correo)}">${esc(p.correo)}</a>` : ""}
-        </p>` : ""}
+      <div style="margin-top:14px">
+        <button class="btn secondary" onclick="openProfile(${p.id})">Ver perfil</button>
+      </div>
     </article>
   `).join("");
 
@@ -405,6 +417,68 @@ async function loadProfiles() {
   render();
 }
 
+
+window.openProfile = function(id) {
+  const p = profiles.find(x => Number(x.id) === Number(id));
+  if (!p) return;
+
+  profileContent.innerHTML = `
+    <div class="profile-head">
+      <div class="profile-photo">
+        ${p.foto_url ? `<img src="${esc(p.foto_url)}" alt="">` : initials(p.nombre)}
+      </div>
+      <div class="profile-title">
+        <h2>${esc(p.nombre)}</h2>
+        <div class="meta">
+          ${p.apodo ? `"${esc(p.apodo)}" · ` : ""}
+          Grupo ${esc(p.grupo)}
+          ${p.ubicacion ? ` · ${esc(p.ubicacion)}` : ""}
+        </div>
+        ${p.trabajo ? `<div style="margin-top:8px"><span class="badge">💼 ${esc(p.trabajo)}</span></div>` : ""}
+      </div>
+    </div>
+
+    ${p.despues_secundaria ? `
+      <div class="profile-section">
+        <h4>Después de la secundaria</h4>
+        <p>${esc(p.despues_secundaria)}</p>
+      </div>` : ""}
+
+    ${p.familia ? `
+      <div class="profile-section">
+        <h4>Situación familiar</h4>
+        <p>${esc(p.familia)}</p>
+      </div>` : ""}
+
+    ${p.hobbies ? `
+      <div class="profile-section">
+        <h4>Pasatiempos</h4>
+        <p>${esc(p.hobbies)}</p>
+      </div>` : ""}
+
+    ${p.dato_curioso ? `
+      <div class="profile-section">
+        <h4>Algo que quizá nadie recuerda 😏</h4>
+        <p>${esc(p.dato_curioso)}</p>
+      </div>` : ""}
+
+    ${(p.telefono || p.correo) ? `
+      <div class="profile-section">
+        <h4>Contacto</h4>
+        <p class="contact">
+          ${p.telefono ? `📱 <a href="tel:${esc(p.telefono)}">${esc(p.telefono)}</a><br>` : ""}
+          ${p.correo ? `✉️ <a href="mailto:${esc(p.correo)}">${esc(p.correo)}</a>` : ""}
+        </p>
+      </div>` : ""}
+  `;
+
+  profileModal.classList.add("show");
+};
+
+function closeProfile() {
+  profileModal.classList.remove("show");
+}
+
 function openForm() {
   form.reset();
   document.getElementById("nameWarning").classList.remove("show");
@@ -416,7 +490,9 @@ function closeForm() {
 
 document.getElementById("addBtn").onclick = openForm;
 document.getElementById("cancelBtn").onclick = closeForm;
+document.getElementById("closeProfileBtn").onclick = closeProfile;
 modal.addEventListener("click", e => { if(e.target === modal) closeForm(); });
+profileModal.addEventListener("click", e => { if(e.target === profileModal) closeProfile(); });
 document.getElementById("search").addEventListener("input", render);
 document.getElementById("nombre").addEventListener("input", updateNameWarning);
 
