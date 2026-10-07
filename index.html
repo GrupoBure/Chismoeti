@@ -127,7 +127,6 @@ footer{padding:28px 0 10px;color:var(--muted);text-align:center;font-size:13px}
   </section>
 
   <div id="statusBox" class="notice info">Conectando con la base de datos…</div>
-  <div id="visitDebug" class="notice info" style="display:none"></div>
 
   <div class="toolbar">
     <input id="search" class="search" placeholder="🔎 Buscar por nombre, apodo, trabajo, ciudad..." />
@@ -283,7 +282,6 @@ const ctaText = document.getElementById("ctaText");
 const sessionInfo = document.getElementById("sessionInfo");
 const visitsTotal = document.getElementById("visitsTotal");
 const visitsToday = document.getElementById("visitsToday");
-const visitDebug = document.getElementById("visitDebug");
 
 let currentUser = null;
 let ownProfile = null;
@@ -442,13 +440,6 @@ async function uploadPhoto(file) {
 
 
 
-function showVisitDebug(message, type="info") {
-  visitDebug.style.display = "block";
-  visitDebug.className = "notice " + type;
-  visitDebug.textContent = message;
-  console.log("[Chismoeti visitas]", message);
-}
-
 async function updateVisitCounters() {
   try {
     const totalResult = await client
@@ -456,13 +447,8 @@ async function updateVisitCounters() {
       .select("id", { count: "exact", head: true });
 
     if (totalResult.error) {
-      showVisitDebug(
-        "❌ Error al LEER visitas totales: " +
-        totalResult.error.message +
-        " | code: " + (totalResult.error.code || "sin código"),
-        "error"
-      );
-      return false;
+      console.error("Error leyendo visitas totales:", totalResult.error);
+      return;
     }
 
     const start = new Date();
@@ -474,39 +460,23 @@ async function updateVisitCounters() {
       .gte("created_at", start.toISOString());
 
     if (todayResult.error) {
-      showVisitDebug(
-        "❌ Error al LEER visitas de hoy: " +
-        todayResult.error.message +
-        " | code: " + (todayResult.error.code || "sin código"),
-        "error"
-      );
-      return false;
+      console.error("Error leyendo visitas de hoy:", todayResult.error);
+      return;
     }
 
     visitsTotal.textContent = totalResult.count ?? 0;
     visitsToday.textContent = todayResult.count ?? 0;
-    return true;
   } catch (err) {
-    showVisitDebug("❌ Excepción leyendo visitas: " + err.message, "error");
-    return false;
+    console.error("Excepción leyendo visitas:", err);
   }
 }
 
 async function registerVisitOnce() {
   const sessionKey = "chismoeti_visit_registered_v1";
 
-  // En modo diagnóstico siempre comprobamos primero que podamos leer.
-  const canRead = await updateVisitCounters();
-  if (!canRead) return;
+  await updateVisitCounters();
 
-  if (sessionStorage.getItem(sessionKey)) {
-    showVisitDebug(
-      "ℹ️ Esta sesión ya estaba marcada como registrada. Lectura OK; contador actual: " +
-      visitsTotal.textContent + " total / " + visitsToday.textContent + " hoy.",
-      "info"
-    );
-    return;
-  }
+  if (sessionStorage.getItem(sessionKey)) return;
 
   let visitorName = null;
   let visitorType = "anonimo";
@@ -519,39 +489,23 @@ async function registerVisitOnce() {
   }
 
   try {
-    const insertResult = await client
+    const { error } = await client
       .from("visitas")
       .insert({
         user_id: visitorUserId,
         nombre: visitorName,
         tipo: visitorType
-      })
-      .select("id, created_at, tipo")
-      .single();
+      });
 
-    if (insertResult.error) {
-      showVisitDebug(
-        "❌ Error al REGISTRAR visita: " +
-        insertResult.error.message +
-        " | code: " + (insertResult.error.code || "sin código") +
-        " | details: " + (insertResult.error.details || "sin detalles"),
-        "error"
-      );
+    if (error) {
+      console.error("Error registrando visita:", error);
       return;
     }
 
     sessionStorage.setItem(sessionKey, "1");
     await updateVisitCounters();
-
-    showVisitDebug(
-      "✅ Diagnóstico OK: visita registrada con id " +
-      insertResult.data.id +
-      ". Contador: " + visitsTotal.textContent +
-      " total / " + visitsToday.textContent + " hoy.",
-      "ok"
-    );
   } catch (err) {
-    showVisitDebug("❌ Excepción registrando visita: " + err.message, "error");
+    console.error("Excepción registrando visita:", err);
   }
 }
 
