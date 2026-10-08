@@ -32,6 +32,23 @@ body::before{
   z-index:0;
 }
 .container{max-width:1100px;margin:auto;padding:20px;position:relative;z-index:1}
+
+.top-school-logo{
+  display:flex;
+  justify-content:center;
+  align-items:center;
+  margin:0 auto 12px;
+}
+.top-school-logo img{
+  width:118px;
+  max-width:30vw;
+  height:auto;
+  display:block;
+  filter:drop-shadow(0 5px 10px rgba(15,23,42,.16));
+}
+@media(max-width:600px){
+  .top-school-logo img{width:92px;max-width:34vw}
+}
 .hero{
   background:linear-gradient(135deg,#1d4ed8,#3b82f6 58%,#0f766e);
   color:#fff;border-radius:24px;padding:30px 26px;margin:10px 0 22px;
@@ -162,6 +179,10 @@ footer{padding:28px 0 10px;color:var(--muted);text-align:center;font-size:13px}
 <body>
 <div class="container">
   <section class="hero">
+    <div class="top-school-logo" aria-label="Generación 1997-2000 E6">
+      <img src="./logo-e6.png" alt="Generación 1997-2000 E6">
+    </div>
+
     <h1>Chismoeti 👋</h1>
     <p>¿Quién es quién? Para volver a ubicarnos sin leer 800 mensajes del grupo 😅</p>
     <div class="stats">
