@@ -108,6 +108,27 @@ footer{padding:28px 0 10px;color:var(--muted);text-align:center;font-size:13px}
   background:#f0fdf4;border:1px solid #bbf7d0;color:#166534;
   font-size:13px;font-weight:800
 }
+.form-section{
+  grid-column:1/-1;margin-top:8px;padding:16px;border-radius:16px;
+  background:#f8fafc;border:1px solid #dbe3ea
+}
+.form-section.hot{
+  background:linear-gradient(135deg,#fff7ed,#f0fdf4);
+  border-color:#fed7aa
+}
+.form-section h3{margin:0 0 6px;color:#1e3a8a}
+.form-section p{margin:0;color:#64748b;font-size:13px;line-height:1.45}
+.hot-grid{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-top:14px}
+.chisme-card{
+  padding:12px 14px;border-radius:14px;background:#fff;border:1px solid #e5e7eb;
+  margin-top:10px
+}
+.chisme-card strong{display:block;color:#1e40af;margin-bottom:4px}
+.blue-note{
+  margin-top:8px;padding:10px 12px;border-radius:12px;background:#eff6ff;
+  border:1px solid #bfdbfe;color:#1e40af;font-size:13px
+}
+@media(max-width:700px){.hot-grid{grid-template-columns:1fr}}
 .name-warning{
   display:none;margin-top:7px;padding:10px 12px;border-radius:12px;
   background:#f0fdf4;border:1px solid #86efac;color:#166534;font-size:13px;font-weight:700
@@ -235,6 +256,69 @@ footer{padding:28px 0 10px;color:var(--muted);text-align:center;font-size:13px}
           <label>Algo que probablemente nadie recuerda de mí</label>
           <textarea id="dato_curioso" maxlength="700" placeholder="Una anécdota o detalle perdido en el tiempo 😂"></textarea>
         </div>
+        <div class="form-section hot">
+          <h3>🔥 Ahora sí viene el chisme...</h3>
+          <p>Todo esto es opcional. Contesta sólo lo que quieras que vea la generación 😏</p>
+          <div class="hot-grid">
+            <div class="field">
+              <label>¿Con quién te juntabas en la secu?</label>
+              <input id="ch_juntabas" maxlength="250" placeholder="La bolita, nombres, banda...">
+            </div>
+            <div class="field">
+              <label>¿Quién era tu amor platónico? ❤️</label>
+              <input id="ch_amor_platonico" maxlength="200" placeholder="Nombre, apodo o 'me lo reservo'">
+            </div>
+            <div class="field">
+              <label>¿Tuviste un crush secreto que nunca se enteró? 👀</label>
+              <input id="ch_crush_secreto" maxlength="200" placeholder="Puedes poner nombre o pasar">
+            </div>
+            <div class="field">
+              <label>¿Qué profesor te marcó más?</label>
+              <input id="ch_profesor" maxlength="200">
+            </div>
+            <div class="field">
+              <label>¿Qué apodo te persigue todavía? 😂</label>
+              <input id="ch_apodo_secundaria" maxlength="150">
+            </div>
+            <div class="field">
+              <label>¿Cuál fue tu mejor o peor travesura? 😈</label>
+              <input id="ch_travesura" maxlength="300">
+            </div>
+            <div class="field">
+              <label>¿Tienes página azul? 🔵😏</label>
+              <select id="ch_pagina_azul">
+                <option value="">Prefiero no responder</option>
+                <option value="si">Sí</option>
+                <option value="no">No</option>
+                <option value="paso">Paso de esta pregunta 😂</option>
+              </select>
+            </div>
+            <div class="field">
+              <label>Si quieres compartirla, pon el enlace</label>
+              <input id="ch_pagina_azul_url" type="url" maxlength="300" placeholder="https://...">
+            </div>
+            <div class="field">
+              <label>Instagram</label>
+              <input id="ch_instagram" maxlength="200" placeholder="@usuario o enlace">
+            </div>
+            <div class="field">
+              <label>TikTok</label>
+              <input id="ch_tiktok" maxlength="200" placeholder="@usuario o enlace">
+            </div>
+            <div class="field full">
+              <label>Otra red que quieras compartir</label>
+              <input id="ch_otra_red" maxlength="250">
+            </div>
+            <div class="field full">
+              <label>🔥 Suelta un chisme de ti que nadie sepa</label>
+              <textarea id="ch_confesion" maxlength="1000" placeholder="Algo tuyo que ya se pueda contar sin mandar a nadie a terapia 😂"></textarea>
+            </div>
+          </div>
+          <div class="blue-note">
+            🔵 Si compartes una página o red, sólo aparecerá porque tú decidiste publicarla en tu perfil.
+          </div>
+        </div>
+
         <div class="field full">
           <label>Foto de perfil (opcional)</label>
           <input id="foto" type="file" accept="image/jpeg,image/png,image/webp">
@@ -797,6 +881,34 @@ window.openProfile = function(id) {
         </p>
       </div>` : ""}
 
+    ${(() => {
+      const ch = p.chismografo || {};
+      const hasChisme = Object.values(ch).some(v => v && String(v).trim() !== "");
+      if (!hasChisme) return "";
+
+      const blueLabel =
+        ch.pagina_azul === "si" ? "Sí 😏" :
+        ch.pagina_azul === "no" ? "No" :
+        ch.pagina_azul === "paso" ? "Paso de esta pregunta 😂" : "";
+
+      return `
+        <div class="profile-section">
+          <h4>🔥 El Chismógrafo</h4>
+          ${ch.juntabas ? `<div class="chisme-card"><strong>¿Con quién se juntaba?</strong>${esc(ch.juntabas)}</div>` : ""}
+          ${ch.amor_platonico ? `<div class="chisme-card"><strong>Amor platónico ❤️</strong>${esc(ch.amor_platonico)}</div>` : ""}
+          ${ch.crush_secreto ? `<div class="chisme-card"><strong>Crush secreto 👀</strong>${esc(ch.crush_secreto)}</div>` : ""}
+          ${ch.profesor ? `<div class="chisme-card"><strong>Profesor que más le marcó</strong>${esc(ch.profesor)}</div>` : ""}
+          ${ch.apodo_secundaria ? `<div class="chisme-card"><strong>Apodo que todavía le persigue 😂</strong>${esc(ch.apodo_secundaria)}</div>` : ""}
+          ${ch.travesura ? `<div class="chisme-card"><strong>Travesura memorable 😈</strong>${esc(ch.travesura)}</div>` : ""}
+          ${blueLabel ? `<div class="chisme-card"><strong>¿Tiene página azul? 🔵😏</strong>${esc(blueLabel)}</div>` : ""}
+          ${ch.pagina_azul_url ? `<div class="chisme-card"><strong>Enlace página azul</strong><a href="${esc(ch.pagina_azul_url)}" target="_blank" rel="noopener noreferrer">Abrir enlace</a></div>` : ""}
+          ${ch.instagram ? `<div class="chisme-card"><strong>Instagram</strong>${esc(ch.instagram)}</div>` : ""}
+          ${ch.tiktok ? `<div class="chisme-card"><strong>TikTok</strong>${esc(ch.tiktok)}</div>` : ""}
+          ${ch.otra_red ? `<div class="chisme-card"><strong>Otra red</strong>${esc(ch.otra_red)}</div>` : ""}
+          ${ch.confesion ? `<div class="chisme-card"><strong>🔥 Chisme/confesión</strong>${esc(ch.confesion)}</div>` : ""}
+        </div>`;
+    })()}
+
     <div class="profile-section">
       <h4>COOL 😎</h4>
       ${coolButtonHtml(p.id)}
@@ -824,6 +936,20 @@ function fillFormFromProfile(p) {
   document.getElementById("familia").value = p?.familia || "";
   document.getElementById("hobbies").value = p?.hobbies || "";
   document.getElementById("dato_curioso").value = p?.dato_curioso || "";
+
+  const ch = p?.chismografo || {};
+  document.getElementById("ch_juntabas").value = ch.juntabas || "";
+  document.getElementById("ch_amor_platonico").value = ch.amor_platonico || "";
+  document.getElementById("ch_crush_secreto").value = ch.crush_secreto || "";
+  document.getElementById("ch_profesor").value = ch.profesor || "";
+  document.getElementById("ch_apodo_secundaria").value = ch.apodo_secundaria || "";
+  document.getElementById("ch_travesura").value = ch.travesura || "";
+  document.getElementById("ch_pagina_azul").value = ch.pagina_azul || "";
+  document.getElementById("ch_pagina_azul_url").value = ch.pagina_azul_url || "";
+  document.getElementById("ch_instagram").value = ch.instagram || "";
+  document.getElementById("ch_tiktok").value = ch.tiktok || "";
+  document.getElementById("ch_otra_red").value = ch.otra_red || "";
+  document.getElementById("ch_confesion").value = ch.confesion || "";
 }
 
 function openForm(mode="create") {
@@ -981,6 +1107,21 @@ form.addEventListener("submit", async e => {
     return;
   }
 
+  const chismografo = {
+    juntabas: document.getElementById("ch_juntabas").value.trim(),
+    amor_platonico: document.getElementById("ch_amor_platonico").value.trim(),
+    crush_secreto: document.getElementById("ch_crush_secreto").value.trim(),
+    profesor: document.getElementById("ch_profesor").value.trim(),
+    apodo_secundaria: document.getElementById("ch_apodo_secundaria").value.trim(),
+    travesura: document.getElementById("ch_travesura").value.trim(),
+    pagina_azul: document.getElementById("ch_pagina_azul").value,
+    pagina_azul_url: document.getElementById("ch_pagina_azul_url").value.trim(),
+    instagram: document.getElementById("ch_instagram").value.trim(),
+    tiktok: document.getElementById("ch_tiktok").value.trim(),
+    otra_red: document.getElementById("ch_otra_red").value.trim(),
+    confesion: document.getElementById("ch_confesion").value.trim()
+  };
+
   const payload = {
     nombre: document.getElementById("nombre").value.trim(),
     apodo: document.getElementById("apodo").value.trim() || null,
@@ -993,6 +1134,7 @@ form.addEventListener("submit", async e => {
     familia: document.getElementById("familia").value.trim() || null,
     hobbies: document.getElementById("hobbies").value.trim() || null,
     dato_curioso: document.getElementById("dato_curioso").value.trim() || null,
+    chismografo,
     foto_url: fotoUrl || (editingMode === "edit" ? ownProfile?.foto_url || null : null),
     user_id: currentUser.id
   };
