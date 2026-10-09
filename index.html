@@ -204,6 +204,26 @@ footer{padding:28px 0 10px;color:var(--muted);text-align:center;font-size:13px}
 .zoom-row input[type="range"]{width:100%}
 .crop-actions{display:flex;justify-content:flex-end;gap:10px;flex-wrap:wrap;margin-top:16px}
 
+
+.gallery-editor{margin-top:16px;padding:14px;border:1px solid #dbe3ea;border-radius:14px;background:#f8fafc}
+.gallery-editor h4{margin:0 0 6px;color:#1e3a8a}
+.gallery-editor p{margin:0 0 10px;color:var(--muted);font-size:13px}
+.gallery-preview-grid,.profile-gallery{display:grid;grid-template-columns:repeat(3,1fr);gap:10px}
+.gallery-preview-item,.profile-gallery-item{position:relative;aspect-ratio:1/1;border-radius:14px;overflow:hidden;background:#e2e8f0}
+.gallery-preview-item img,.profile-gallery-item img{width:100%;height:100%;object-fit:cover;display:block}
+.gallery-remove{position:absolute;top:6px;right:6px;width:30px;height:30px;border-radius:50%;border:0;background:rgba(15,23,42,.78);color:white;font-weight:900;cursor:pointer}
+.gallery-add-note{font-size:12px;color:var(--muted);margin-top:8px}
+.edit-photo-hint{font-size:12px;color:#1d4ed8;font-weight:800;margin-top:6px}
+.profile-photo.editable{cursor:pointer;position:relative}
+.profile-photo.editable::after{
+  content:"✂️ Editar";
+  position:absolute;left:50%;bottom:4px;transform:translateX(-50%);
+  background:rgba(15,23,42,.78);color:white;padding:3px 7px;border-radius:999px;
+  font-size:11px;font-weight:800;white-space:nowrap
+}
+.profile-gallery-item{cursor:pointer}
+@media(max-width:560px){.gallery-preview-grid,.profile-gallery{grid-template-columns:repeat(3,1fr)}}
+
 </style>
 </head>
 <body>
@@ -397,6 +417,15 @@ footer{padding:28px 0 10px;color:var(--muted);text-align:center;font-size:13px}
             <button type="button" class="btn secondary" id="reeditPhotoBtn" style="display:none">✂️ Volver a acomodar</button>
           </div>
         </div>
+        <div class="field full">
+          <div class="gallery-editor">
+            <h4>📸 Fotos extra</h4>
+            <p>Puedes agregar hasta 3 fotos más a tu perfil.</p>
+            <input id="fotosExtraInput" type="file" accept="image/jpeg,image/png,image/webp" multiple>
+            <div class="gallery-add-note">Cada foto se podrá acomodar antes de guardarla.</div>
+            <div id="galleryPreviewGrid" class="gallery-preview-grid" style="margin-top:12px"></div>
+          </div>
+        </div>
       </div>
       <div class="footer-actions">
         <button type="button" class="btn secondary" id="cancelBtn">Cancelar</button>
@@ -417,10 +446,10 @@ footer{padding:28px 0 10px;color:var(--muted);text-align:center;font-size:13px}
     </div>
     <div class="zoom-row">
       <span>−</span>
-      <input id="cropZoom" type="range" min="1" max="3" step="0.01" value="1">
+      <input id="cropZoom" type="range" min="0.45" max="5" step="0.01" value="1">
       <span>+</span>
     </div>
-    <div class="crop-help">Puedes mover la foto con el dedo o el mouse.</div>
+    <div class="crop-help">Puedes mover la foto y hacerla mucho más pequeña o más grande.</div>
     <div class="crop-actions">
       <button type="button" class="btn secondary" id="cancelCropBtn">Cancelar</button>
       <button type="button" class="btn" id="applyCropBtn">Usar esta foto</button>
@@ -480,6 +509,12 @@ let cropOffsetY = 0;
 let cropDragging = false;
 let cropLastX = 0;
 let cropLastY = 0;
+let cropMode = "main-form"; // main-form | main-direct | gallery-add
+let galleryExistingUrls = [];
+let galleryNewFiles = [];
+let galleryQueue = [];
+let directEditProfileId = null;
+
 
 
 let profiles = [];
@@ -740,7 +775,7 @@ function drawCrop() {
   const w = cropImage.naturalWidth * scale;
   const h = cropImage.naturalHeight * scale;
 
-  cropCtx.fillStyle = "#0f172a";
+  cropCtx.fillStyle = "#f1f5f9";
   cropCtx.fillRect(0, 0, cw, ch);
 
   cropCtx.drawImage(
@@ -766,7 +801,8 @@ function resetCropPosition() {
   drawCrop();
 }
 
-function openCropEditor(file) {
+function openCropEditor(file, mode="main-form") {
+  cropMode = mode;
   if (!file) return;
 
   const allowed = ["image/jpeg", "image/png", "image/webp"];
@@ -798,6 +834,61 @@ function openCropEditor(file) {
   reader.readAsDataURL(file);
 }
 
+
+function normalizeGallery(value) {
+  if (!Array.isArray(value)) return [];
+  return value.map(item => {
+    if (typeof item === "string") return item;
+    if (item && typeof item.url === "string") return item.url;
+    return null;
+  }).filter(Boolean).slice(0, 3);
+}
+
+function renderGalleryEditor() {
+  const grid = document.getElementById("galleryPreviewGrid");
+  if (!grid) return;
+
+  const items = [
+    ...galleryExistingUrls.map((url, i) => ({type:"existing", url, index:i})),
+    ...galleryNewFiles.map((file, i) => ({type:"new", url:URL.createObjectURL(file), index:i}))
+  ];
+
+  grid.innerHTML = items.map(item => `
+    <div class="gallery-preview-item">
+      <img src="${esc(item.url)}" alt="Foto extra">
+      <button type="button" class="gallery-remove"
+        onclick="removeGalleryPhoto('${item.type}', ${item.index})">×</button>
+    </div>
+  `).join("");
+}
+
+window.removeGalleryPhoto = function(type, index) {
+  if (type === "existing") galleryExistingUrls.splice(index, 1);
+  if (type === "new") galleryNewFiles.splice(index, 1);
+  renderGalleryEditor();
+};
+
+async function fileFromUrl(url, filename="foto-existente.jpg") {
+  const res = await fetch(url, { cache: "no-store" });
+  if (!res.ok) throw new Error("No pude cargar la foto existente.");
+  const blob = await res.blob();
+  return new File([blob], filename, { type: blob.type || "image/jpeg" });
+}
+
+async function editExistingMainPhoto(profileId) {
+  if (!currentUser || !ownProfile || Number(ownProfile.id) !== Number(profileId)) return;
+  if (!ownProfile.foto_url) return;
+
+  try {
+    directEditProfileId = Number(profileId);
+    const file = await fileFromUrl(ownProfile.foto_url, "foto-actual.jpg");
+    openCropEditor(file, "main-direct");
+  } catch (err) {
+    alert("No pude abrir tu foto para editarla: " + err.message);
+  }
+}
+window.editExistingMainPhoto = editExistingMainPhoto;
+
 function canvasToFile(canvas, filename="foto-perfil.jpg") {
   return new Promise((resolve, reject) => {
     canvas.toBlob(blob => {
@@ -828,13 +919,54 @@ async function applyCrop() {
   );
 
   try {
-    croppedPhotoFile = await canvasToFile(out, "foto-perfil.jpg");
+    const processed = await canvasToFile(out, "foto-perfil.jpg");
+
+    if (cropMode === "gallery-add") {
+      if (galleryExistingUrls.length + galleryNewFiles.length < 3) {
+        galleryNewFiles.push(processed);
+      }
+      cropModal.classList.remove("show");
+      renderGalleryEditor();
+
+      if (galleryQueue.length) {
+        const next = galleryQueue.shift();
+        setTimeout(() => openCropEditor(next, "gallery-add"), 150);
+      }
+      return;
+    }
+
+    if (cropMode === "main-direct") {
+      applyCropBtn.disabled = true;
+      applyCropBtn.textContent = "Guardando…";
+
+      const newUrl = await uploadPhoto(processed);
+      const { error } = await client
+        .from("perfiles")
+        .update({ foto_url: newUrl })
+        .eq("id", directEditProfileId);
+
+      if (error) throw error;
+
+      cropModal.classList.remove("show");
+      applyCropBtn.disabled = false;
+      applyCropBtn.textContent = "Usar esta foto";
+
+      await loadProfiles();
+      await refreshAuthState();
+
+      if (directEditProfileId) openProfile(directEditProfileId);
+      return;
+    }
+
+    croppedPhotoFile = processed;
     photoPreviewImg.src = URL.createObjectURL(croppedPhotoFile);
     photoPreview.style.display = "flex";
     reeditPhotoBtn.style.display = "inline-flex";
     cropModal.classList.remove("show");
   } catch (err) {
-    alert(err.message);
+    applyCropBtn.disabled = false;
+    applyCropBtn.textContent = "Usar esta foto";
+    alert("No pude procesar la foto: " + err.message);
   }
 }
 
@@ -883,7 +1015,7 @@ cancelCropBtn.addEventListener("click", cancelCrop);
 applyCropBtn.addEventListener("click", applyCrop);
 
 reeditPhotoBtn.addEventListener("click", () => {
-  if (cropOriginalFile) openCropEditor(cropOriginalFile);
+  if (cropOriginalFile) openCropEditor(cropOriginalFile, "main-form");
 });
 
 document.getElementById("foto").addEventListener("change", e => {
@@ -892,16 +1024,42 @@ document.getElementById("foto").addEventListener("change", e => {
   croppedPhotoFile = null;
   photoPreview.style.display = "none";
   reeditPhotoBtn.style.display = "none";
-  openCropEditor(file);
+  openCropEditor(file, "main-form");
+});
+
+document.getElementById("fotosExtraInput").addEventListener("change", e => {
+  const files = Array.from(e.target.files || []);
+  e.target.value = "";
+
+  const remaining = 3 - galleryExistingUrls.length - galleryNewFiles.length;
+  if (remaining <= 0) {
+    alert("Ya tienes 3 fotos extra.");
+    return;
+  }
+
+  galleryQueue = files.slice(0, remaining);
+  if (files.length > remaining) {
+    alert(`Sólo puedes agregar ${remaining} foto${remaining === 1 ? "" : "s"} más.`);
+  }
+
+  const first = galleryQueue.shift();
+  if (first) openCropEditor(first, "gallery-add");
 });
 
 function resetPhotoEditor() {
   cropImage = null;
   cropOriginalFile = null;
   croppedPhotoFile = null;
+  cropMode = "main-form";
+  galleryQueue = [];
+  galleryNewFiles = [];
+  galleryExistingUrls = [];
   photoPreview.style.display = "none";
   photoPreviewImg.removeAttribute("src");
   reeditPhotoBtn.style.display = "none";
+  const gx = document.getElementById("fotosExtraInput");
+  if (gx) gx.value = "";
+  renderGalleryEditor();
 }
 
 
@@ -1129,7 +1287,8 @@ window.openProfile = function(id) {
   profileContent.dataset.profileId = String(p.id);
   profileContent.innerHTML = `
     <div class="profile-head">
-      <div class="profile-photo">
+      <div class="profile-photo ${isOwnProfileId(p.id) && p.foto_url ? "editable" : ""}"
+           ${isOwnProfileId(p.id) && p.foto_url ? `onclick="editExistingMainPhoto(${p.id})" title="Editar foto"` : ""}>
         ${p.foto_url ? `<img src="${esc(p.foto_url)}" alt="">` : initials(p.nombre)}
       </div>
       <div class="profile-title">
@@ -1140,6 +1299,7 @@ window.openProfile = function(id) {
           ${p.ubicacion ? ` · ${esc(p.ubicacion)}` : ""}
         </div>
         ${p.trabajo ? `<div style="margin-top:8px"><span class="badge">💼 ${esc(p.trabajo)}</span></div>` : ""}
+        ${isOwnProfileId(p.id) && p.foto_url ? `<div class="edit-photo-hint">Toca tu foto para volver a acomodarla ✂️</div>` : ""}
       </div>
     </div>
 
@@ -1175,6 +1335,21 @@ window.openProfile = function(id) {
           ${p.correo ? `✉️ <a href="mailto:${esc(p.correo)}">${esc(p.correo)}</a>` : ""}
         </p>
       </div>` : ""}
+
+    ${(() => {
+      const extra = normalizeGallery(p.fotos_extra);
+      if (!extra.length) return "";
+      return `
+        <div class="profile-section">
+          <h4>📸 Más fotos</h4>
+          <div class="profile-gallery">
+            ${extra.map(url => `
+              <div class="profile-gallery-item" onclick="window.open('${esc(url)}','_blank')">
+                <img src="${esc(url)}" alt="Foto extra">
+              </div>`).join("")}
+          </div>
+        </div>`;
+    })()}
 
     ${(() => {
       const ch = p.chismografo || {};
@@ -1251,7 +1426,14 @@ function fillFormFromProfile(p) {
   if (p?.foto_url) {
     photoPreviewImg.src = p.foto_url;
     photoPreview.style.display = "flex";
+    if (p) {
+      reeditPhotoBtn.style.display = "none";
+    }
   }
+
+  galleryExistingUrls = normalizeGallery(p?.fotos_extra);
+  galleryNewFiles = [];
+  renderGalleryEditor();
 }
 
 function openForm(mode="create") {
@@ -1402,6 +1584,20 @@ form.addEventListener("submit", async e => {
     return;
   }
 
+  let fotosExtraFinal = [...galleryExistingUrls];
+  try {
+    for (const file of galleryNewFiles) {
+      if (fotosExtraFinal.length >= 3) break;
+      const url = await uploadPhoto(file);
+      if (url) fotosExtraFinal.push(url);
+    }
+  } catch (err) {
+    saveBtn.disabled = false;
+    saveBtn.textContent = "Guardar presentación";
+    alert("No se pudieron subir las fotos extra: " + err.message);
+    return;
+  }
+
   if (!currentUser) {
     alert("Tu sesión terminó. Vuelve a entrar con tu correo.");
     closeForm();
@@ -1438,6 +1634,7 @@ form.addEventListener("submit", async e => {
     dato_curioso: document.getElementById("dato_curioso").value.trim() || null,
     chismografo,
     foto_url: fotoUrl || (editingMode === "edit" ? ownProfile?.foto_url || null : null),
+    fotos_extra: fotosExtraFinal.slice(0, 3).map(url => ({ url })),
     user_id: currentUser.id
   };
 
