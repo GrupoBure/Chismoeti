@@ -7,7 +7,24 @@
 <link rel="icon" type="image/png" href="./favicon.png" />
 <link rel="apple-touch-icon" href="./favicon.png" />
 <meta name="theme-color" content="#2563eb" />
-<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2">
+document.addEventListener("error", (e) => {
+  const img = e.target;
+  if (!(img instanceof HTMLImageElement)) return;
+  if (!img.closest(".profile-gallery-item")) return;
+
+  const item = img.closest(".profile-gallery-item");
+  const section = img.closest(".profile-gallery-section");
+  item?.remove();
+
+  requestAnimationFrame(() => {
+    if (section && !section.querySelector(".profile-gallery-item")) {
+      section.remove();
+    }
+  });
+}, true);
+
+</script>
 <style>
 :root{
   --bg:#eef3f8;--card:#ffffff;--text:#1f2937;--muted:#64748b;
@@ -185,6 +202,8 @@ footer{padding:28px 0 10px;color:var(--muted);text-align:center;font-size:13px}
 }
 .photo-preview img{width:100%;height:100%;object-fit:cover}
 .crop-modal-panel{width:min(520px,100%)}
+#cropModal{z-index:9999 !important}
+#cropModal .panel{position:relative;z-index:10000}
 .crop-stage{
   position:relative;width:min(82vw,400px);aspect-ratio:1/1;
   margin:14px auto;background:#0f172a;border-radius:18px;overflow:hidden;
@@ -837,11 +856,22 @@ function openCropEditor(file, mode="main-form") {
 
 function normalizeGallery(value) {
   if (!Array.isArray(value)) return [];
-  return value.map(item => {
-    if (typeof item === "string") return item;
-    if (item && typeof item.url === "string") return item.url;
-    return null;
-  }).filter(Boolean).slice(0, 3);
+
+  const isValidImageUrl = (url) => {
+    if (typeof url !== "string") return false;
+    const clean = url.trim();
+    if (!clean) return false;
+    return /^https?:\/\//i.test(clean) || /^blob:/i.test(clean) || /^data:image\//i.test(clean);
+  };
+
+  return value
+    .map(item => {
+      if (typeof item === "string") return item.trim();
+      if (item && typeof item.url === "string") return item.url.trim();
+      return "";
+    })
+    .filter(isValidImageUrl)
+    .slice(0, 3);
 }
 
 function renderGalleryEditor() {
@@ -1280,6 +1310,16 @@ async function loadProfiles() {
 }
 
 
+
+function cleanupEmptyProfileGalleries() {
+  document.querySelectorAll(".profile-gallery-section").forEach(section => {
+    const gallery = section.querySelector(".profile-gallery");
+    if (!gallery || gallery.querySelectorAll(".profile-gallery-item").length === 0) {
+      section.remove();
+    }
+  });
+}
+
 window.openProfile = function(id) {
   const p = profiles.find(x => Number(x.id) === Number(id));
   if (!p) return;
@@ -1338,16 +1378,18 @@ window.openProfile = function(id) {
 
     ${(() => {
       const extra = normalizeGallery(p.fotos_extra);
-      if (!extra.length) return "";
+      if (extra.length === 0) return "";
+
+      const photosHtml = extra.map(url => `
+        <div class="profile-gallery-item" onclick="window.open('${esc(url)}','_blank')">
+          <img src="${esc(url)}" alt="Foto extra"
+               onerror="this.closest('.profile-gallery-item')?.remove()">
+        </div>`).join("");
+
       return `
-        <div class="profile-section">
+        <div class="profile-section profile-gallery-section">
           <h4>📸 Más fotos</h4>
-          <div class="profile-gallery">
-            ${extra.map(url => `
-              <div class="profile-gallery-item" onclick="window.open('${esc(url)}','_blank')">
-                <img src="${esc(url)}" alt="Foto extra">
-              </div>`).join("")}
-          </div>
+          <div class="profile-gallery">${photosHtml}</div>
         </div>`;
     })()}
 
