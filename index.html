@@ -174,6 +174,36 @@ footer{padding:28px 0 10px;color:var(--muted);text-align:center;font-size:13px}
   .form-grid{grid-template-columns:1fr}
   .field.full{grid-column:auto}
 }
+
+.photo-tools{
+  display:flex;align-items:center;gap:12px;flex-wrap:wrap;margin-top:10px
+}
+.photo-preview{
+  width:88px;height:88px;border-radius:50%;overflow:hidden;
+  border:3px solid #dbeafe;background:#f8fafc;display:none;
+  align-items:center;justify-content:center
+}
+.photo-preview img{width:100%;height:100%;object-fit:cover}
+.crop-modal-panel{width:min(520px,100%)}
+.crop-stage{
+  position:relative;width:min(82vw,400px);aspect-ratio:1/1;
+  margin:14px auto;background:#0f172a;border-radius:18px;overflow:hidden;
+  touch-action:none;user-select:none;box-shadow:inset 0 0 0 2px rgba(255,255,255,.12)
+}
+.crop-stage canvas{position:absolute;inset:0;width:100%;height:100%;display:block}
+.crop-guide{
+  position:absolute;inset:7%;border:2px solid rgba(255,255,255,.9);
+  border-radius:14px;pointer-events:none;
+  box-shadow:0 0 0 9999px rgba(0,0,0,.28)
+}
+.crop-help{text-align:center;color:var(--muted);font-size:13px;margin-top:6px}
+.zoom-row{
+  display:grid;grid-template-columns:auto 1fr auto;gap:10px;
+  align-items:center;margin:14px 0 2px
+}
+.zoom-row input[type="range"]{width:100%}
+.crop-actions{display:flex;justify-content:flex-end;gap:10px;flex-wrap:wrap;margin-top:16px}
+
 </style>
 </head>
 <body>
@@ -359,7 +389,13 @@ footer{padding:28px 0 10px;color:var(--muted);text-align:center;font-size:13px}
         <div class="field full">
           <label>Foto de perfil (opcional)</label>
           <input id="foto" type="file" accept="image/jpeg,image/png,image/webp">
-          <div class="small">JPG, PNG o WebP. Máximo 2 MB.</div>
+          <div class="small">JPG, PNG o WebP. La podrás acomodar antes de guardarla.</div>
+          <div class="photo-tools">
+            <div class="photo-preview" id="photoPreview">
+              <img id="photoPreviewImg" alt="Vista previa">
+            </div>
+            <button type="button" class="btn secondary" id="reeditPhotoBtn" style="display:none">✂️ Volver a acomodar</button>
+          </div>
         </div>
       </div>
       <div class="footer-actions">
@@ -367,6 +403,28 @@ footer{padding:28px 0 10px;color:var(--muted);text-align:center;font-size:13px}
         <button type="submit" class="btn" id="saveBtn">Guardar presentación</button>
       </div>
     </form>
+  </div>
+</div>
+
+
+<div class="modal" id="cropModal">
+  <div class="panel crop-modal-panel">
+    <h2 style="margin-top:0">✂️ Acomoda tu foto</h2>
+    <p style="color:var(--muted);margin-top:0">Arrastra la imagen para centrarla y usa el zoom.</p>
+    <div class="crop-stage" id="cropStage">
+      <canvas id="cropCanvas" width="800" height="800"></canvas>
+      <div class="crop-guide"></div>
+    </div>
+    <div class="zoom-row">
+      <span>−</span>
+      <input id="cropZoom" type="range" min="1" max="3" step="0.01" value="1">
+      <span>+</span>
+    </div>
+    <div class="crop-help">Puedes mover la foto con el dedo o el mouse.</div>
+    <div class="crop-actions">
+      <button type="button" class="btn secondary" id="cancelCropBtn">Cancelar</button>
+      <button type="button" class="btn" id="applyCropBtn">Usar esta foto</button>
+    </div>
   </div>
 </div>
 
@@ -401,6 +459,28 @@ footer{padding:28px 0 10px;color:var(--muted);text-align:center;font-size:13px}
 const SUPABASE_URL = 'https://ojetnxragvscilqvdvqb.supabase.co';
 const SUPABASE_KEY = 'sb_publishable_KY1zWYr0UV_uC4s40DUQkg_Na0IDP96';
 const client = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+
+const cropModal = document.getElementById("cropModal");
+const cropStage = document.getElementById("cropStage");
+const cropCanvas = document.getElementById("cropCanvas");
+const cropCtx = cropCanvas.getContext("2d");
+const cropZoom = document.getElementById("cropZoom");
+const cancelCropBtn = document.getElementById("cancelCropBtn");
+const applyCropBtn = document.getElementById("applyCropBtn");
+const reeditPhotoBtn = document.getElementById("reeditPhotoBtn");
+const photoPreview = document.getElementById("photoPreview");
+const photoPreviewImg = document.getElementById("photoPreviewImg");
+
+let cropImage = null;
+let cropOriginalFile = null;
+let croppedPhotoFile = null;
+let cropScaleBase = 1;
+let cropOffsetX = 0;
+let cropOffsetY = 0;
+let cropDragging = false;
+let cropLastX = 0;
+let cropLastY = 0;
+
 
 let profiles = [];
 let currentGroup = "Todos";
@@ -647,6 +727,184 @@ function render() {
   document.getElementById("countAll").textContent = profiles.length;
 }
 
+
+function drawCrop() {
+  if (!cropImage) return;
+
+  const cw = cropCanvas.width;
+  const ch = cropCanvas.height;
+  cropCtx.clearRect(0, 0, cw, ch);
+
+  const zoom = Number(cropZoom.value || 1);
+  const scale = cropScaleBase * zoom;
+  const w = cropImage.naturalWidth * scale;
+  const h = cropImage.naturalHeight * scale;
+
+  cropCtx.fillStyle = "#0f172a";
+  cropCtx.fillRect(0, 0, cw, ch);
+
+  cropCtx.drawImage(
+    cropImage,
+    cw / 2 - w / 2 + cropOffsetX,
+    ch / 2 - h / 2 + cropOffsetY,
+    w,
+    h
+  );
+}
+
+function resetCropPosition() {
+  if (!cropImage) return;
+  const cw = cropCanvas.width;
+  const ch = cropCanvas.height;
+  cropScaleBase = Math.max(
+    cw / cropImage.naturalWidth,
+    ch / cropImage.naturalHeight
+  );
+  cropZoom.value = "1";
+  cropOffsetX = 0;
+  cropOffsetY = 0;
+  drawCrop();
+}
+
+function openCropEditor(file) {
+  if (!file) return;
+
+  const allowed = ["image/jpeg", "image/png", "image/webp"];
+  if (!allowed.includes(file.type)) {
+    alert("La foto debe ser JPG, PNG o WebP.");
+    document.getElementById("foto").value = "";
+    return;
+  }
+
+  if (file.size > 12 * 1024 * 1024) {
+    alert("La foto es demasiado pesada. Usa una imagen menor a 12 MB.");
+    document.getElementById("foto").value = "";
+    return;
+  }
+
+  cropOriginalFile = file;
+  const reader = new FileReader();
+
+  reader.onload = e => {
+    const img = new Image();
+    img.onload = () => {
+      cropImage = img;
+      resetCropPosition();
+      cropModal.classList.add("show");
+    };
+    img.src = e.target.result;
+  };
+
+  reader.readAsDataURL(file);
+}
+
+function canvasToFile(canvas, filename="foto-perfil.jpg") {
+  return new Promise((resolve, reject) => {
+    canvas.toBlob(blob => {
+      if (!blob) {
+        reject(new Error("No se pudo procesar la imagen."));
+        return;
+      }
+      resolve(new File([blob], filename, { type: "image/jpeg" }));
+    }, "image/jpeg", 0.88);
+  });
+}
+
+async function applyCrop() {
+  if (!cropImage) return;
+
+  const margin = Math.round(cropCanvas.width * 0.07);
+  const size = cropCanvas.width - margin * 2;
+
+  const out = document.createElement("canvas");
+  out.width = 800;
+  out.height = 800;
+  const octx = out.getContext("2d");
+
+  octx.drawImage(
+    cropCanvas,
+    margin, margin, size, size,
+    0, 0, 800, 800
+  );
+
+  try {
+    croppedPhotoFile = await canvasToFile(out, "foto-perfil.jpg");
+    photoPreviewImg.src = URL.createObjectURL(croppedPhotoFile);
+    photoPreview.style.display = "flex";
+    reeditPhotoBtn.style.display = "inline-flex";
+    cropModal.classList.remove("show");
+  } catch (err) {
+    alert(err.message);
+  }
+}
+
+function cancelCrop() {
+  cropModal.classList.remove("show");
+  if (!croppedPhotoFile) {
+    document.getElementById("foto").value = "";
+  }
+}
+
+cropZoom.addEventListener("input", drawCrop);
+
+cropStage.addEventListener("pointerdown", e => {
+  if (!cropImage) return;
+  cropDragging = true;
+  cropLastX = e.clientX;
+  cropLastY = e.clientY;
+  cropStage.setPointerCapture(e.pointerId);
+});
+
+cropStage.addEventListener("pointermove", e => {
+  if (!cropDragging || !cropImage) return;
+
+  const rect = cropStage.getBoundingClientRect();
+  const scaleX = cropCanvas.width / rect.width;
+  const scaleY = cropCanvas.height / rect.height;
+
+  cropOffsetX += (e.clientX - cropLastX) * scaleX;
+  cropOffsetY += (e.clientY - cropLastY) * scaleY;
+
+  cropLastX = e.clientX;
+  cropLastY = e.clientY;
+  drawCrop();
+});
+
+cropStage.addEventListener("pointerup", e => {
+  cropDragging = false;
+  try { cropStage.releasePointerCapture(e.pointerId); } catch {}
+});
+
+cropStage.addEventListener("pointercancel", () => {
+  cropDragging = false;
+});
+
+cancelCropBtn.addEventListener("click", cancelCrop);
+applyCropBtn.addEventListener("click", applyCrop);
+
+reeditPhotoBtn.addEventListener("click", () => {
+  if (cropOriginalFile) openCropEditor(cropOriginalFile);
+});
+
+document.getElementById("foto").addEventListener("change", e => {
+  const file = e.target.files?.[0] || null;
+  if (!file) return;
+  croppedPhotoFile = null;
+  photoPreview.style.display = "none";
+  reeditPhotoBtn.style.display = "none";
+  openCropEditor(file);
+});
+
+function resetPhotoEditor() {
+  cropImage = null;
+  cropOriginalFile = null;
+  croppedPhotoFile = null;
+  photoPreview.style.display = "none";
+  photoPreviewImg.removeAttribute("src");
+  reeditPhotoBtn.style.display = "none";
+}
+
+
 function safeFileName(name="foto") {
   return name
     .normalize("NFD")
@@ -665,7 +923,7 @@ async function uploadPhoto(file) {
   }
 
   if (file.size > 2 * 1024 * 1024) {
-    throw new Error("La foto pesa más de 2 MB.");
+    throw new Error("La foto procesada pesa más de 2 MB.");
   }
 
   const extension = (file.name.split(".").pop() || "jpg").toLowerCase();
@@ -961,6 +1219,7 @@ function closeProfile() {
 
 function fillFormFromProfile(p) {
   form.reset();
+    resetPhotoEditor();
   document.getElementById("nameWarning").classList.remove("show");
   document.getElementById("nombre").value = p?.nombre || "";
   document.getElementById("apodo").value = p?.apodo || "";
@@ -987,6 +1246,12 @@ function fillFormFromProfile(p) {
   document.getElementById("ch_tiktok").value = ch.tiktok || "";
   document.getElementById("ch_otra_red").value = ch.otra_red || "";
   document.getElementById("ch_confesion").value = ch.confesion || "";
+
+  resetPhotoEditor();
+  if (p?.foto_url) {
+    photoPreviewImg.src = p.foto_url;
+    photoPreview.style.display = "flex";
+  }
 }
 
 function openForm(mode="create") {
@@ -1123,7 +1388,7 @@ form.addEventListener("submit", async e => {
 
   let fotoUrl = null;
   const fotoInput = document.getElementById("foto");
-  const fotoFile = fotoInput.files[0] || null;
+  const fotoFile = croppedPhotoFile || null;
 
   saveBtn.disabled = true;
   saveBtn.textContent = fotoFile ? "Subiendo foto…" : "Guardando…";
