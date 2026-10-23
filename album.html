@@ -53,6 +53,99 @@ input,select,textarea{width:100%;padding:11px 12px;border:1px solid #cbd5e1;bord
 .modal-card{width:min(560px,100%);background:white;border-radius:18px;padding:18px;max-height:90vh;overflow:auto} .modal-actions{display:flex;justify-content:flex-end;gap:8px;margin-top:14px;flex-wrap:wrap}
 @media(max-width:850px){.book{grid-template-columns:1fr;min-height:auto}.spine{height:14px}.stage{grid-template-columns:36px 1fr 36px;gap:5px}.arrow{width:36px;height:36px}}
 @media(max-width:620px){.container{padding:12px}.brand img{width:64px}.cover-title{font-size:34px}.book{display:block}.spine{display:none}.page{padding:14px}.grid{gap:9px}.cap{font-size:12px}.form{grid-template-columns:1fr}.field.full{grid-column:auto}}
+
+/* ===== Animaciones del álbum ===== */
+@keyframes coverOpen {
+  0% { transform: perspective(1400px) rotateY(0deg) scale(1); opacity:1; }
+  65% { transform: perspective(1400px) rotateY(-72deg) scale(.98); opacity:.9; }
+  100% { transform: perspective(1400px) rotateY(-105deg) scale(.96); opacity:0; }
+}
+@keyframes albumReveal {
+  0% { opacity:0; transform:translateY(18px) scale(.985); }
+  100% { opacity:1; transform:translateY(0) scale(1); }
+}
+@keyframes pageNext {
+  0% { transform:perspective(1200px) rotateY(0deg); opacity:1; }
+  48% { transform:perspective(1200px) rotateY(-18deg); opacity:.72; }
+  100% { transform:perspective(1200px) rotateY(0deg); opacity:1; }
+}
+@keyframes pagePrev {
+  0% { transform:perspective(1200px) rotateY(0deg); opacity:1; }
+  48% { transform:perspective(1200px) rotateY(18deg); opacity:.72; }
+  100% { transform:perspective(1200px) rotateY(0deg); opacity:1; }
+}
+.album-cover.opening{
+  transform-origin:left center;
+  animation:coverOpen .72s cubic-bezier(.2,.75,.2,1) forwards;
+}
+.album-shell.revealing{
+  display:block;
+  animation:albumReveal .5s ease-out both;
+}
+.book.turn-next{ animation:pageNext .42s ease; transform-origin:center; }
+.book.turn-prev{ animation:pagePrev .42s ease; transform-origin:center; }
+
+.memory img{ cursor:zoom-in; transition:transform .18s ease, box-shadow .18s ease; }
+.memory img:hover{ transform:scale(1.018); box-shadow:0 8px 18px rgba(15,23,42,.14); }
+
+/* ===== Visor de foto ===== */
+.photo-viewer{
+  position:fixed; inset:0; z-index:12000;
+  display:none; align-items:center; justify-content:center;
+  background:rgba(2,6,23,.82); backdrop-filter:blur(6px);
+  padding:20px;
+}
+.photo-viewer.show{ display:flex; }
+.photo-viewer-card{
+  width:min(980px,96vw);
+  max-height:92vh;
+  background:#fff;
+  border-radius:20px;
+  overflow:hidden;
+  box-shadow:0 30px 80px rgba(0,0,0,.38);
+  display:grid;
+  grid-template-columns:minmax(0,1.5fr) minmax(280px,.7fr);
+}
+.photo-viewer-media{
+  background:#0f172a;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  min-height:360px;
+}
+.photo-viewer-media img{
+  width:100%;
+  height:100%;
+  max-height:82vh;
+  object-fit:contain;
+}
+.photo-viewer-info{
+  padding:24px;
+  display:flex;
+  flex-direction:column;
+  gap:12px;
+  min-width:0;
+}
+.photo-viewer-close{
+  align-self:flex-end;
+  width:38px; height:38px; border-radius:50%;
+  border:1px solid #cbd5e1; background:#fff; cursor:pointer;
+  font-size:22px; line-height:1;
+}
+.photo-viewer-desc{
+  font-family:"Comic Sans MS","Bradley Hand",cursive;
+  font-size:19px; line-height:1.45; color:#334155; white-space:pre-wrap;
+}
+.photo-viewer-meta{ color:#64748b; font-size:14px; line-height:1.6; }
+.photo-viewer-owner{ color:#0f766e; font-weight:800; font-size:14px; }
+
+@media(max-width:760px){
+  .photo-viewer-card{ grid-template-columns:1fr; max-height:94vh; overflow:auto; }
+  .photo-viewer-media{ min-height:260px; }
+  .photo-viewer-media img{ max-height:58vh; }
+  .photo-viewer-info{ padding:16px; }
+}
+
 </style>
 </head>
 <body>
@@ -68,7 +161,7 @@ input,select,textarea{width:100%;padding:11px 12px;border:1px solid #cbd5e1;bord
   </div>
   <section id="album" class="album">
     <div id="filters" class="filters"></div>
-    <div class="stage"><button id="prev" class="arrow">‹</button><div class="book"><div id="left" class="page"></div><div class="spine"></div><div id="right" class="page"></div></div><button id="next" class="arrow">›</button></div>
+    <div class="stage"><button id="prev" class="arrow">‹</button><div class="book" id="book"><div id="left" class="page"></div><div class="spine"></div><div id="right" class="page"></div></div><button id="next" class="arrow">›</button></div>
     <div id="indicator" class="indicator">1 / 1</div>
   </section>
   <section id="uploadPanel" class="panel">
@@ -112,4 +205,19 @@ function pathFrom(url){const n="/storage/v1/object/public/album_fotos/",i=url.in
 async function removePhoto(id){const p=photos.find(x=>+x.id===id);if(!p||!user||p.user_id!==user.id||!confirm("¿Borrar esta foto del álbum?"))return;const{error}=await client.from("album_fotos").delete().eq("id",id);if(error)return alert(error.message);const path=pathFrom(p.foto_url);if(path)await client.storage.from("album_fotos").remove([path]);await load()}
 client.auth.onAuthStateChange(async()=>{await auth();await load()});(async()=>{await auth();await load()})();
 </script>
+
+<div class="photo-viewer" id="photoViewer" aria-hidden="true">
+  <div class="photo-viewer-card">
+    <div class="photo-viewer-media">
+      <img id="viewerImg" alt="Foto ampliada del álbum">
+    </div>
+    <div class="photo-viewer-info">
+      <button class="photo-viewer-close" id="viewerClose" type="button" aria-label="Cerrar">×</button>
+      <div id="viewerDesc" class="photo-viewer-desc"></div>
+      <div id="viewerMeta" class="photo-viewer-meta"></div>
+      <div id="viewerOwner" class="photo-viewer-owner"></div>
+    </div>
+  </div>
+</div>
+
 </body></html>
