@@ -29,7 +29,7 @@ body{margin:0;font-family:system-ui,-apple-system,Segoe UI,Roboto,Arial,sans-ser
 .filter{border:1px solid #cbd5e1;background:white;color:#334155;border-radius:999px;padding:8px 12px;font-weight:800;cursor:pointer} .filter.active{background:#dbeafe;border-color:#93c5fd;color:#1e40af}
 .stage{display:grid;grid-template-columns:44px 1fr 44px;gap:10px;align-items:center}
 .arrow{width:44px;height:44px;border-radius:50%;border:1px solid #cbd5e1;background:white;color:#1e40af;font-size:24px;font-weight:900;cursor:pointer} .arrow:disabled{opacity:.35}
-.book{display:grid;grid-template-columns:1fr 18px 1fr;border:1px solid #cbd5e1;border-radius:18px;overflow:hidden;background:#cbd5e1;box-shadow:0 18px 40px rgba(15,23,42,.15);min-height:540px}
+.book{display:grid;grid-template-columns:1fr 18px 1fr;border:1px solid #cbd5e1;border-radius:18px;overflow:hidden;background:#cbd5e1;box-shadow:0 18px 40px rgba(15,23,42,.15);min-height:540px;position:relative;perspective:2200px;transform-style:preserve-3d}
 .page{padding:22px;background:linear-gradient(rgba(255,255,255,.72),rgba(255,255,255,.72)),repeating-linear-gradient(0deg,#f8f1df 0,#f8f1df 31px,#e9dec0 32px);min-width:0}
 .spine{background:linear-gradient(90deg,#60472d,#92714d,#60472d)}
 .page-title{font:italic 20px Georgia,serif;color:#475569;margin-bottom:12px}
@@ -64,15 +64,15 @@ input,select,textarea{width:100%;padding:11px 12px;border:1px solid #cbd5e1;bord
   0% { opacity:0; transform:translateY(18px) scale(.985); }
   100% { opacity:1; transform:translateY(0) scale(1); }
 }
-@keyframes pageNext {
-  0% { transform:perspective(1200px) rotateY(0deg); opacity:1; }
-  48% { transform:perspective(1200px) rotateY(-18deg); opacity:.72; }
-  100% { transform:perspective(1200px) rotateY(0deg); opacity:1; }
+@keyframes sheetNext{
+  0%{transform:rotateY(0deg);box-shadow:-8px 0 18px rgba(15,23,42,.08)}
+  45%{box-shadow:-28px 8px 38px rgba(15,23,42,.28)}
+  100%{transform:rotateY(-180deg);box-shadow:-4px 0 8px rgba(15,23,42,.05)}
 }
-@keyframes pagePrev {
-  0% { transform:perspective(1200px) rotateY(0deg); opacity:1; }
-  48% { transform:perspective(1200px) rotateY(18deg); opacity:.72; }
-  100% { transform:perspective(1200px) rotateY(0deg); opacity:1; }
+@keyframes sheetPrev{
+  0%{transform:rotateY(0deg);box-shadow:8px 0 18px rgba(15,23,42,.08)}
+  45%{box-shadow:28px 8px 38px rgba(15,23,42,.28)}
+  100%{transform:rotateY(180deg);box-shadow:4px 0 8px rgba(15,23,42,.05)}
 }
 .cover.opening{
   transform-origin:left center;
@@ -82,8 +82,11 @@ input,select,textarea{width:100%;padding:11px 12px;border:1px solid #cbd5e1;bord
   display:block;
   animation:albumReveal .5s ease-out both;
 }
-.book.turn-next{ animation:pageNext .42s ease; transform-origin:center; }
-.book.turn-prev{ animation:pagePrev .42s ease; transform-origin:center; }
+.flip-sheet{position:absolute;top:0;bottom:0;width:calc(50% - 9px);z-index:30;backface-visibility:hidden;transform-style:preserve-3d;pointer-events:none;overflow:hidden;background:linear-gradient(rgba(255,255,255,.72),rgba(255,255,255,.72)),repeating-linear-gradient(0deg,#f8f1df 0,#f8f1df 31px,#e9dec0 32px)}
+.flip-sheet.next{right:0;transform-origin:left center;animation:sheetNext .72s cubic-bezier(.22,.61,.36,1) forwards}
+.flip-sheet.prev{left:0;transform-origin:right center;animation:sheetPrev .72s cubic-bezier(.22,.61,.36,1) forwards}
+.flip-sheet .page{height:100%;min-height:540px}
+@media(max-width:850px){.flip-sheet{width:100%;left:0!important;right:0!important}.flip-sheet.next,.flip-sheet.prev{transform-origin:left center}}
 
 .mem img{ cursor:zoom-in; transition:transform .18s ease, box-shadow .18s ease; }
 .mem img:hover{ transform:scale(1.018); box-shadow:0 8px 18px rgba(15,23,42,.14); }
@@ -138,6 +141,11 @@ input,select,textarea{width:100%;padding:11px 12px;border:1px solid #cbd5e1;bord
 }
 .photo-viewer-meta{ color:#64748b; font-size:14px; line-height:1.6; }
 .photo-viewer-owner{ color:#0f766e; font-weight:800; font-size:14px; }
+.photo-viewer-tools{display:none;gap:8px;flex-wrap:wrap;margin-top:4px}
+.photo-viewer-tools.show{display:flex}
+.viewer-tool{border:1px solid #cbd5e1;background:#f8fafc;color:#1e3a8a;border-radius:10px;padding:9px 12px;font-weight:800;cursor:pointer}
+.viewer-tool:disabled{opacity:.5;cursor:wait}
+.rotate-note{font-size:12px;color:#64748b}
 
 @media(max-width:760px){
   .photo-viewer-card{ grid-template-columns:1fr; max-height:94vh; overflow:auto; }
@@ -187,6 +195,11 @@ input,select,textarea{width:100%;padding:11px 12px;border:1px solid #cbd5e1;bord
       <div id="viewerDesc" class="photo-viewer-desc"></div>
       <div id="viewerMeta" class="photo-viewer-meta"></div>
       <div id="viewerOwner" class="photo-viewer-owner"></div>
+      <div id="viewerTools" class="photo-viewer-tools">
+        <button id="rotateLeft" class="viewer-tool" type="button">↶ Girar izquierda</button>
+        <button id="rotateRight" class="viewer-tool" type="button">↷ Girar derecha</button>
+        <div id="rotateStatus" class="rotate-note"></div>
+      </div>
     </div>
   </div>
 </div>
@@ -199,7 +212,7 @@ let photos=[],filtered=[],spread=0,filter="Todas",user=null,profile=null,process
 function fmtDate(v){if(!v)return"";const[y,m,d]=v.split("-").map(Number);return new Intl.DateTimeFormat("es-MX",{year:"numeric",month:"short",day:"numeric"}).format(new Date(Date.UTC(y,m-1,d)))}
 function fmtCreated(v){try{return new Intl.DateTimeFormat("es-MX",{dateStyle:"medium"}).format(new Date(v))}catch{return""}}
 async function auth(){const{data:{session}}=await client.auth.getSession();user=session?.user||null;profile=null;if(user){const{data}=await client.from("perfiles").select("id,nombre,user_id").eq("user_id",user.id).maybeSingle();profile=data||null}$("authNote").classList.toggle("hidden",!!user);$("form").querySelectorAll("input,textarea,select,button").forEach(x=>x.disabled=!user)}
-async function load(){const{data,error}=await client.from("album_fotos").select("id,created_at,user_id,perfil_id,foto_url,descripcion,categoria,fecha_recuerdo").order("created_at",{ascending:false});photos=error?[]:(data||[]);const ids=[...new Set(photos.map(x=>x.user_id).filter(Boolean))];let names={};if(ids.length){const{data:p}=await client.from("perfiles").select("user_id,nombre").in("user_id",ids);for(const r of(p||[]))names[r.user_id]=r.nombre}photos=photos.map(p=>({...p,uploader:names[p.user_id]||"Compañero/a"}));apply(filter)}
+async function load(){const{data,error}=await client.from("album_fotos").select("id,created_at,user_id,perfil_id,foto_url,descripcion,categoria,fecha_recuerdo").order("created_at",{ascending:true});photos=error?[]:(data||[]);const ids=[...new Set(photos.map(x=>x.user_id).filter(Boolean))];let names={};if(ids.length){const{data:p}=await client.from("perfiles").select("user_id,nombre").in("user_id",ids);for(const r of(p||[]))names[r.user_id]=r.nombre}photos=photos.map(p=>({...p,uploader:names[p.user_id]||"Compañero/a"}));apply(filter)}
 function renderFilters(){$("filters").innerHTML=["Todas","Secundaria","Reencuentro","Grupo","Otros"].map(c=>`<button type="button" class="filter ${c===filter?"active":""}" data-f="${c}">${c}</button>`).join("");$("filters").querySelectorAll("[data-f]").forEach(b=>b.onclick=()=>apply(b.dataset.f))}
 function apply(f){filter=f;filtered=f==="Todas"?photos.slice():photos.filter(p=>(p.categoria||"Otros")===f);spread=0;renderFilters();render()}
 function card(p,i){const mine=user&&p.user_id===user.id;return `<article class="mem" style="--r:${[-1.2,.8,-.5,1.1][i%4]}deg"><img src="${esc(p.foto_url)}" alt="Recuerdo" loading="lazy" data-view="${p.id}">${p.descripcion?`<div class="cap">${esc(p.descripcion)}</div>`:""}<div class="meta">${p.fecha_recuerdo?`<span>📅 ${esc(fmtDate(p.fecha_recuerdo))}</span>`:`<span>📌 ${esc(fmtCreated(p.created_at))}</span>`}${p.categoria?`<span>🏷️ ${esc(p.categoria)}</span>`:""}</div><div class="who">Subió: ${esc(p.uploader)}</div>${mine?`<div class="mine"><button class="mini" data-edit="${p.id}" type="button">✏️ Editar</button><button class="mini del" data-del="${p.id}" type="button">🗑️ Borrar</button></div>`:""}</article>`}
@@ -227,18 +240,20 @@ function turnPage(dir){
   const total=Math.max(1,Math.ceil(filtered.length/PAGE_SIZE));
   if(dir==="prev" && spread<=0) return;
   if(dir==="next" && spread>=total-1) return;
+  if(book.querySelector(".flip-sheet")) return;
 
-  const cls=dir==="next"?"turn-next":"turn-prev";
-  book.classList.remove("turn-next","turn-prev");
-  void book.offsetWidth;
-  book.classList.add(cls);
+  const source=dir==="next"?$("right"):$("left");
+  const sheet=document.createElement("div");
+  sheet.className="flip-sheet "+dir;
+  sheet.innerHTML='<div class="page">'+source.innerHTML+'</div>';
+  book.appendChild(sheet);
 
   setTimeout(()=>{
     spread += dir==="next" ? 1 : -1;
     render();
-  },180);
+  },350);
 
-  setTimeout(()=>book.classList.remove(cls),430);
+  setTimeout(()=>sheet.remove(),740);
 }
 
 $("cover").onclick=openAlbum;
@@ -267,15 +282,79 @@ function openViewer(id){
 
   $("viewerMeta").textContent=meta.join("  ·  ");
   $("viewerOwner").textContent="Subió: "+(p.uploader||"Compañero/a");
+  const mine=!!(user&&p.user_id===user.id);
+  $("viewerTools").classList.toggle("show",mine);
+  $("viewerTools").dataset.id=mine?String(p.id):"";
+  $("rotateStatus").textContent="";
   $("photoViewer").classList.add("show");
   $("photoViewer").setAttribute("aria-hidden","false");
   document.body.style.overflow="hidden";
 }
 
+async function rotatePhoto(id,degrees){
+  const p=photos.find(x=>+x.id===+id);
+  if(!p||!user||p.user_id!==user.id)return;
+
+  const l=$("rotateLeft"),r=$("rotateRight"),s=$("rotateStatus");
+  l.disabled=r.disabled=true;
+  s.textContent="Girando y guardando…";
+
+  try{
+    const res=await fetch(p.foto_url,{cache:"no-store"});
+    if(!res.ok)throw Error("No pude descargar la foto.");
+    const blob=await res.blob();
+    const bmp=await createImageBitmap(blob);
+
+    const swap=Math.abs(degrees)%180===90;
+    const c=document.createElement("canvas");
+    c.width=swap?bmp.height:bmp.width;
+    c.height=swap?bmp.width:bmp.height;
+
+    const ctx=c.getContext("2d");
+    ctx.translate(c.width/2,c.height/2);
+    ctx.rotate(degrees*Math.PI/180);
+    ctx.drawImage(bmp,-bmp.width/2,-bmp.height/2);
+    bmp.close();
+
+    const out=await new Promise((resolve,reject)=>
+      c.toBlob(b=>b?resolve(b):reject(Error("No pude procesar la foto.")),"image/jpeg",.88)
+    );
+
+    const newPath=user.id+"/"+Date.now()+"-rotada-"+Math.random().toString(36).slice(2,7)+".jpg";
+    const up=await client.storage.from("album_fotos").upload(newPath,out,{contentType:"image/jpeg",upsert:false});
+    if(up.error)throw up.error;
+
+    const newUrl=client.storage.from("album_fotos").getPublicUrl(newPath).data.publicUrl;
+    const upd=await client.from("album_fotos").update({foto_url:newUrl}).eq("id",p.id);
+    if(upd.error){
+      await client.storage.from("album_fotos").remove([newPath]);
+      throw upd.error;
+    }
+
+    const oldPath=pathFrom(p.foto_url);
+    if(oldPath)await client.storage.from("album_fotos").remove([oldPath]);
+
+    $("viewerImg").src=newUrl+"?v="+Date.now();
+    s.textContent="✅ Foto girada.";
+    await load();
+  }catch(err){
+    console.error(err);
+    s.textContent="No pude girarla: "+(err.message||"error");
+  }finally{
+    l.disabled=r.disabled=false;
+  }
+}
+
+$("rotateLeft").onclick=()=>rotatePhoto(+$("viewerTools").dataset.id,-90);
+$("rotateRight").onclick=()=>rotatePhoto(+$("viewerTools").dataset.id,90);
+
 function closeViewer(){
   $("photoViewer").classList.remove("show");
   $("photoViewer").setAttribute("aria-hidden","true");
   $("viewerImg").src="";
+  $("viewerTools").classList.remove("show");
+  $("viewerTools").dataset.id="";
+  $("rotateStatus").textContent="";
   document.body.style.overflow="";
 }
 
