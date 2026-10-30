@@ -27,6 +27,10 @@ body{margin:0;font-family:system-ui,-apple-system,Segoe UI,Roboto,Arial,sans-ser
 .album{display:none} .album.show{display:block}
 .filters{display:flex;justify-content:center;gap:8px;flex-wrap:wrap;margin:8px 0 16px}
 .filter{border:1px solid #cbd5e1;background:white;color:#334155;border-radius:999px;padding:8px 12px;font-weight:800;cursor:pointer} .filter.active{background:#dbeafe;border-color:#93c5fd;color:#1e40af}
+.people-nav{display:flex;justify-content:center;gap:7px;flex-wrap:wrap;margin:0 0 16px}
+.person-chip{border:1px solid #bbf7d0;background:#f0fdf4;color:#166534;border-radius:999px;padding:7px 11px;font-weight:800;cursor:pointer}
+.person-chip.active{background:#166534;color:white;border-color:#166534}
+.section-badge{display:inline-flex;align-items:center;gap:7px;background:#e0f2fe;border:1px solid #bae6fd;color:#0c4a6e;border-radius:999px;padding:6px 11px;font:800 13px system-ui,-apple-system,Segoe UI,Roboto,Arial,sans-serif;margin-bottom:10px}
 .stage{display:grid;grid-template-columns:44px 1fr 44px;gap:10px;align-items:center}
 .arrow{width:44px;height:44px;border-radius:50%;border:1px solid #cbd5e1;background:white;color:#1e40af;font-size:24px;font-weight:900;cursor:pointer} .arrow:disabled{opacity:.35}
 .book{display:grid;grid-template-columns:1fr 18px 1fr;border:1px solid #cbd5e1;border-radius:18px;overflow:hidden;background:#cbd5e1;box-shadow:0 18px 40px rgba(15,23,42,.15);min-height:540px;position:relative;perspective:2200px;transform-style:preserve-3d}
@@ -169,6 +173,7 @@ input,select,textarea{width:100%;padding:11px 12px;border:1px solid #cbd5e1;bord
   </div>
   <section id="album" class="album">
     <div id="filters" class="filters"></div>
+    <div id="peopleNav" class="people-nav"></div>
     <div class="stage"><button id="prev" class="arrow">‹</button><div class="book" id="book"><div id="left" class="page"></div><div class="spine"></div><div id="right" class="page"></div></div><button id="next" class="arrow">›</button></div>
     <div id="indicator" class="indicator">1 / 1</div>
   </section>
@@ -208,13 +213,57 @@ input,select,textarea{width:100%;padding:11px 12px;border:1px solid #cbd5e1;bord
 const SUPABASE_URL='https://ojetnxragvscilqvdvqb.supabase.co',SUPABASE_KEY='sb_publishable_KY1zWYr0UV_uC4s40DUQkg_Na0IDP96';
 const client=window.supabase.createClient(SUPABASE_URL,SUPABASE_KEY,{auth:{persistSession:true,autoRefreshToken:true,detectSessionInUrl:true}});
 const $=id=>document.getElementById(id),esc=v=>String(v??"").replaceAll("&","&amp;").replaceAll("<","&lt;").replaceAll(">","&gt;").replaceAll('"',"&quot;").replaceAll("'","&#039;");
-let photos=[],filtered=[],spread=0,filter="Todas",user=null,profile=null,processed=null,editing=null;const PAGE_SIZE=8;
+let photos=[],filtered=[],spreads=[],spread=0,filter="Todas",user=null,profile=null,processed=null,editing=null;const PAGE_SIZE=8;
 function fmtDate(v){if(!v)return"";const[y,m,d]=v.split("-").map(Number);return new Intl.DateTimeFormat("es-MX",{year:"numeric",month:"short",day:"numeric"}).format(new Date(Date.UTC(y,m-1,d)))}
 function fmtCreated(v){try{return new Intl.DateTimeFormat("es-MX",{dateStyle:"medium"}).format(new Date(v))}catch{return""}}
 async function auth(){const{data:{session}}=await client.auth.getSession();user=session?.user||null;profile=null;if(user){const{data}=await client.from("perfiles").select("id,nombre,user_id").eq("user_id",user.id).maybeSingle();profile=data||null}$("authNote").classList.toggle("hidden",!!user);$("form").querySelectorAll("input,textarea,select,button").forEach(x=>x.disabled=!user)}
 async function load(){const{data,error}=await client.from("album_fotos").select("id,created_at,user_id,perfil_id,foto_url,descripcion,categoria,fecha_recuerdo").order("created_at",{ascending:true});photos=error?[]:(data||[]);const ids=[...new Set(photos.map(x=>x.user_id).filter(Boolean))];let names={};if(ids.length){const{data:p}=await client.from("perfiles").select("user_id,nombre").in("user_id",ids);for(const r of(p||[]))names[r.user_id]=r.nombre}photos=photos.map(p=>({...p,uploader:names[p.user_id]||"Compañero/a"}));apply(filter)}
 function renderFilters(){$("filters").innerHTML=["Todas","Secundaria","Reencuentro","Grupo","Otros"].map(c=>`<button type="button" class="filter ${c===filter?"active":""}" data-f="${c}">${c}</button>`).join("");$("filters").querySelectorAll("[data-f]").forEach(b=>b.onclick=()=>apply(b.dataset.f))}
-function apply(f){filter=f;filtered=f==="Todas"?photos.slice():photos.filter(p=>(p.categoria||"Otros")===f);spread=0;renderFilters();render()}
+function buildSpreads(){
+  const groups=new Map();
+  for(const p of filtered){
+    const name=(p.uploader||"Compañero/a").trim()||"Compañero/a";
+    if(!groups.has(name))groups.set(name,[]);
+    groups.get(name).push(p);
+  }
+
+  const names=[...groups.keys()].sort((a,b)=>{
+    if(a==="Compañero/a")return 1;
+    if(b==="Compañero/a")return -1;
+    return a.localeCompare(b,"es",{sensitivity:"base"});
+  });
+
+  spreads=[];
+  for(const name of names){
+    const items=groups.get(name).slice().sort((a,b)=>new Date(a.created_at)-new Date(b.created_at));
+    for(let i=0;i<items.length;i+=PAGE_SIZE){
+      spreads.push({person:name,items:items.slice(i,i+PAGE_SIZE),part:Math.floor(i/PAGE_SIZE)+1,totalParts:Math.ceil(items.length/PAGE_SIZE)});
+    }
+  }
+  renderPeopleNav();
+}
+
+function renderPeopleNav(){
+  const firstIndex=new Map();
+  spreads.forEach((s,i)=>{if(!firstIndex.has(s.person))firstIndex.set(s.person,i)});
+  const current=spreads[spread]?.person||"";
+  $("peopleNav").innerHTML=[...firstIndex.entries()].map(([name,idx])=>
+    `<button type="button" class="person-chip ${name===current?"active":""}" data-person-index="${idx}">👤 ${esc(name)}</button>`
+  ).join("");
+  $("peopleNav").querySelectorAll("[data-person-index]").forEach(b=>b.onclick=()=>{
+    spread=+b.dataset.personIndex;
+    render();
+  });
+}
+
+function apply(f){
+  filter=f;
+  filtered=f==="Todas"?photos.slice():photos.filter(p=>(p.categoria||"Otros")===f);
+  spread=0;
+  renderFilters();
+  buildSpreads();
+  render();
+}
 function card(p,i){const mine=user&&p.user_id===user.id;return `<article class="mem" style="--r:${[-1.2,.8,-.5,1.1][i%4]}deg"><img src="${esc(p.foto_url)}" alt="Recuerdo" loading="lazy" data-view="${p.id}">${p.descripcion?`<div class="cap">${esc(p.descripcion)}</div>`:""}<div class="meta">${p.fecha_recuerdo?`<span>📅 ${esc(fmtDate(p.fecha_recuerdo))}</span>`:`<span>📌 ${esc(fmtCreated(p.created_at))}</span>`}${p.categoria?`<span>🏷️ ${esc(p.categoria)}</span>`:""}</div><div class="who">Subió: ${esc(p.uploader)}</div>${mine?`<div class="mine"><button class="mini" data-edit="${p.id}" type="button">✏️ Editar</button><button class="mini del" data-del="${p.id}" type="button">🗑️ Borrar</button></div>`:""}</article>`}
 function page(items,title){return items.length?`<div class="page-title">${title}</div><div class="grid">${items.map(card).join("")}</div>`:`<div class="page-title">${title}</div><div class="empty"><div><div style="font-size:42px">📷</div><strong>Aún no hay fotos aquí.</strong><br>Este espacio espera un buen chisme.</div></div>`}
 function bind(){
@@ -222,7 +271,25 @@ function bind(){
   document.querySelectorAll("[data-del]").forEach(b=>b.onclick=()=>removePhoto(+b.dataset.del));
   document.querySelectorAll("[data-view]").forEach(img=>img.onclick=()=>openViewer(+img.dataset.view));
 }
-function render(){const total=Math.max(1,Math.ceil(filtered.length/PAGE_SIZE));spread=Math.min(spread,total-1);const s=filtered.slice(spread*PAGE_SIZE,spread*PAGE_SIZE+PAGE_SIZE);$("left").innerHTML=page(s.slice(0,4),spread===0?"Nuestros recuerdos":"Seguimos recordando…");$("right").innerHTML=page(s.slice(4,8),"Más chisme fotográfico");$("prev").disabled=spread<=0;$("next").disabled=spread>=total-1;$("indicator").textContent=`${spread+1} / ${total}`;bind()}
+function render(){
+  const total=Math.max(1,spreads.length);
+  spread=Math.min(spread,total-1);
+  const section=spreads[spread]||{person:"Sin fotos",items:[],part:1,totalParts:1};
+  const s=section.items;
+  const suffix=section.totalParts>1?` · parte ${section.part} de ${section.totalParts}`:"";
+  const title=`<span class="section-badge">👤 ${esc(section.person)}${suffix}</span>`;
+
+  $("left").innerHTML=page(s.slice(0,4),title);
+  $("right").innerHTML=page(s.slice(4,8),s.length>4?`Recuerdos de ${esc(section.person)}`:"");
+
+  $("prev").disabled=spread<=0;
+  $("next").disabled=spread>=total-1;
+  $("indicator").textContent=spreads.length
+    ? `${section.person} · sección ${spread+1} de ${total}`
+    : "Sin fotos";
+  renderPeopleNav();
+  bind();
+}
 function openAlbum(){
   const c=$("cover"), wrap=$("coverWrap"), album=$("album");
   if(c.classList.contains("opening")) return;
@@ -237,7 +304,7 @@ function openAlbum(){
 
 function turnPage(dir){
   const book=$("book");
-  const total=Math.max(1,Math.ceil(filtered.length/PAGE_SIZE));
+  const total=Math.max(1,spreads.length);
   if(dir==="prev" && spread<=0) return;
   if(dir==="next" && spread>=total-1) return;
   if(book.querySelector(".flip-sheet")) return;
