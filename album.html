@@ -35,6 +35,8 @@ body{margin:0;font-family:system-ui,-apple-system,Segoe UI,Roboto,Arial,sans-ser
 .stage{display:grid;grid-template-columns:44px 1fr 44px;gap:10px;align-items:center}
 .arrow{width:44px;height:44px;border-radius:50%;border:1px solid #cbd5e1;background:white;color:#1e40af;font-size:24px;font-weight:900;cursor:pointer} .arrow:disabled{opacity:.35}
 .book{width:100%;height:560px;min-height:560px;display:flex;align-items:center;justify-content:center;overflow:visible;position:relative}
+.book-fallback{display:grid!important;grid-template-columns:1fr 1fr;gap:16px;height:auto!important;min-height:0!important}
+.book-fallback .flip-page{display:block!important;position:relative!important;transform:none!important;width:auto!important;height:auto!important;min-height:520px}
 .flip-page{padding:22px;background:linear-gradient(rgba(255,255,255,.76),rgba(255,255,255,.76)),repeating-linear-gradient(0deg,#f8f1df 0,#f8f1df 31px,#e9dec0 32px);border:1px solid #d8caa8;overflow:hidden;box-shadow:inset 0 0 20px rgba(98,72,45,.06);position:relative}
 .flip-cover{padding:0!important;background:linear-gradient(135deg,#183b55,#0f4f4c 60%,#163c4d)!important;border:4px solid #0b2f3d!important;color:white}
 .flip-cover::before{content:"";position:absolute;inset:16px;border:2px solid rgba(218,184,88,.58);border-radius:12px 20px 20px 12px;pointer-events:none}
@@ -238,6 +240,7 @@ input,select,textarea{width:100%;padding:11px 12px;border:1px solid #cbd5e1;bord
 </div>
 <div id="editModal" class="modal"><div class="modal-card"><h3>✏️ Editar recuerdo</h3><label>Descripción</label><textarea id="eDesc" maxlength="700"></textarea><label style="margin-top:10px">Categoría</label><select id="eCat"><option>Secundaria</option><option>Reencuentro</option><option>Grupo</option><option>Otros</option></select><label style="margin-top:10px">Fecha</label><input id="eDate" type="date"><div class="modal-actions"><button id="cancelEdit" class="btn secondary" type="button">Cancelar</button><button id="saveEdit" class="btn" type="button">Guardar</button></div></div></div>
 <script>
+window.addEventListener("error",e=>console.error("Album JS:",e.error||e.message));
 const SUPABASE_URL='https://ojetnxragvscilqvdvqb.supabase.co',SUPABASE_KEY='sb_publishable_KY1zWYr0UV_uC4s40DUQkg_Na0IDP96';
 const client=window.supabase.createClient(SUPABASE_URL,SUPABASE_KEY,{auth:{persistSession:true,autoRefreshToken:true,detectSessionInUrl:true}});
 const $=id=>document.getElementById(id),esc=v=>String(v??"").replaceAll("&","&amp;").replaceAll("<","&lt;").replaceAll(">","&gt;").replaceAll('"',"&quot;").replaceAll("'","&#039;");
@@ -282,7 +285,7 @@ function renderPeopleNav(){
     const logical=+b.dataset.personIndex;
     spread=logical;
     if(pageFlip) pageFlip.turnToPage(logical*2+2);
-    updateBookUI(logical*2);
+    updateBookUI(logical*2+2);
   });
 }
 
@@ -335,6 +338,8 @@ function renderBook(startPage=0){
     try{pageFlip.destroy()}catch(e){console.warn(e)}
     pageFlip=null;
   }
+
+  book.classList.remove("book-fallback");
   book.innerHTML="";
 
   const cover=document.createElement("div");
@@ -373,36 +378,73 @@ function renderBook(startPage=0){
     });
   }
 
-  pageFlip=new St.PageFlip(book,{
-    width:500,
-    height:560,
-    size:"stretch",
-    minWidth:270,
-    maxWidth:520,
-    minHeight:420,
-    maxHeight:620,
-    drawShadow:true,
-    flippingTime:900,
-    usePortrait:true,
-    startPage:Math.min(startPage,Math.max(0,book.children.length-1)),
-    autoSize:true,
-    maxShadowOpacity:.45,
-    showCover:true,
-    mobileScrollSupport:false,
-    swipeDistance:24,
-    clickEventForward:true,
-    useMouseEvents:true,
-    disableFlipByClick:true
-  });
-
-  pageFlip.on("flip",e=>updateBookUI(Number(e.data)||0));
-  pageFlip.on("changeOrientation",()=>setTimeout(()=>updateBookUI(pageFlip.getCurrentPageIndex()),30));
-  pageFlip.loadFromHTML(book.querySelectorAll(".flip-page"));
-
-  setTimeout(()=>{
+  const initFallback=(message)=>{
+    console.error(message);
+    book.classList.add("book-fallback");
+    [...book.children].forEach(el=>{
+      el.style.display="block";
+      el.style.position="relative";
+      el.style.transform="none";
+      el.style.width="auto";
+      el.style.height="auto";
+    });
+    $("prev").disabled=true;
+    $("next").disabled=true;
+    $("indicator").textContent="Álbum visible sin animación";
+    renderPeopleNav();
     bind();
-    updateBookUI(pageFlip.getCurrentPageIndex());
-  },50);
+  };
+
+  try{
+    if(!window.St || !window.St.PageFlip){
+      initFallback("StPageFlip no cargó.");
+      return;
+    }
+
+    pageFlip=new St.PageFlip(book,{
+      width:500,
+      height:560,
+      size:"stretch",
+      minWidth:270,
+      maxWidth:520,
+      minHeight:420,
+      maxHeight:620,
+      drawShadow:true,
+      flippingTime:900,
+      usePortrait:true,
+      startPage:Math.min(startPage,Math.max(0,book.children.length-1)),
+      autoSize:true,
+      maxShadowOpacity:.45,
+      showCover:true,
+      mobileScrollSupport:false,
+      swipeDistance:24,
+      clickEventForward:true,
+      useMouseEvents:true,
+      disableFlipByClick:true
+    });
+
+    pageFlip.on("flip",e=>updateBookUI(Number(e.data)||0));
+    pageFlip.on("changeOrientation",()=>setTimeout(()=>updateBookUI(pageFlip.getCurrentPageIndex()),30));
+
+    const pages=[...book.querySelectorAll(".flip-page")];
+    if(!pages.length){
+      initFallback("No se generaron páginas.");
+      return;
+    }
+
+    pageFlip.loadFromHTML(pages);
+
+    setTimeout(()=>{
+      try{
+        bind();
+        updateBookUI(pageFlip.getCurrentPageIndex());
+      }catch(err){
+        initFallback(err);
+      }
+    },120);
+  }catch(err){
+    initFallback(err);
+  }
 }
 
 function turnPage(dir){
@@ -417,7 +459,7 @@ $("goUpload").onclick=()=>$("uploadPanel").scrollIntoView({behavior:"smooth"});
 async function compress(file){if(!["image/jpeg","image/png","image/webp"].includes(file.type))throw Error("La imagen debe ser JPG, PNG o WebP.");const bmp=await createImageBitmap(file),max=1600,scale=Math.min(1,max/Math.max(bmp.width,bmp.height)),w=Math.max(1,Math.round(bmp.width*scale)),h=Math.max(1,Math.round(bmp.height*scale)),c=document.createElement("canvas");c.width=w;c.height=h;c.getContext("2d").drawImage(bmp,0,0,w,h);bmp.close();const blob=await new Promise((res,rej)=>c.toBlob(b=>b?res(b):rej(Error("No pude comprimir la foto.")),"image/jpeg",.82));return new File([blob],"recuerdo.jpg",{type:"image/jpeg"})}
 $("photo").onchange=async e=>{processed=null;const f=e.target.files?.[0];if(!f)return;$("status").textContent="Optimizando foto…";try{processed=await compress(f);$("previewImg").src=URL.createObjectURL(processed);$("preview").style.display="block";$("status").textContent=`✅ Foto optimizada: ${Math.round(processed.size/1024)} KB`;$("status").className="status ok"}catch(err){$("status").textContent=err.message;$("status").className="status bad";e.target.value=""}};
 async function upload(file){const path=`${user.id}/${Date.now()}-${Math.random().toString(36).slice(2,8)}.jpg`;const{error}=await client.storage.from("album_fotos").upload(path,file,{contentType:"image/jpeg",upsert:false});if(error)throw error;return client.storage.from("album_fotos").getPublicUrl(path).data.publicUrl}
-$("form").onsubmit=async e=>{e.preventDefault();if(!user)return;if(!processed){$("status").textContent="Selecciona una foto.";$("status").className="status bad";return}const b=$("publish");b.disabled=true;b.textContent="Publicando…";try{const foto_url=await upload(processed);const{error}=await client.from("album_fotos").insert({user_id:user.id,perfil_id:profile?.id||null,foto_url,descripcion:$("desc").value.trim()||null,categoria:$("cat").value||"Otros",fecha_recuerdo:$("date").value||null});if(error)throw error;$("form").reset();processed=null;$("preview").style.display="none";$("status").textContent="✅ Recuerdo publicado.";$("status").className="status ok";await load();openAlbum()}catch(err){$("status").textContent="No pude publicar: "+err.message;$("status").className="status bad"}finally{b.disabled=!user;b.textContent="Publicar en el álbum"}};
+$("form").onsubmit=async e=>{e.preventDefault();if(!user)return;if(!processed){$("status").textContent="Selecciona una foto.";$("status").className="status bad";return}const b=$("publish");b.disabled=true;b.textContent="Publicando…";try{const foto_url=await upload(processed);const{error}=await client.from("album_fotos").insert({user_id:user.id,perfil_id:profile?.id||null,foto_url,descripcion:$("desc").value.trim()||null,categoria:$("cat").value||"Otros",fecha_recuerdo:$("date").value||null});if(error)throw error;$("form").reset();processed=null;$("preview").style.display="none";$("status").textContent="✅ Recuerdo publicado.";$("status").className="status ok";await load()}catch(err){$("status").textContent="No pude publicar: "+err.message;$("status").className="status bad"}finally{b.disabled=!user;b.textContent="Publicar en el álbum"}};
 
 function openViewer(id){
   const p=photos.find(x=>+x.id===id);
