@@ -25,7 +25,7 @@ body{margin:0;font-family:system-ui,-apple-system,Segoe UI,Roboto,Arial,sans-ser
 .cover-logo{width:155px;max-width:44%;filter:drop-shadow(0 5px 10px rgba(0,0,0,.25))}
 .cover-title{font:italic 44px Georgia,serif;margin:8px 0 4px} .cover-sub{font-weight:900;color:#d1fae5;font-size:19px} .cover-gen{margin-top:12px;color:#cbd5e1;font-size:14px}
 .open-pill{margin-top:20px;border:1px solid rgba(255,255,255,.3);background:rgba(255,255,255,.1);padding:9px 13px;border-radius:999px;font-weight:800}
-.album{display:none} .album.show{display:block}
+.album{display:block}
 .filters{display:flex;justify-content:center;gap:8px;flex-wrap:wrap;margin:8px 0 16px}
 .filter{border:1px solid #cbd5e1;background:white;color:#334155;border-radius:999px;padding:8px 12px;font-weight:800;cursor:pointer} .filter.active{background:#dbeafe;border-color:#93c5fd;color:#1e40af}
 .people-nav{display:flex;justify-content:center;gap:7px;flex-wrap:wrap;margin:0 0 16px}
@@ -35,7 +35,17 @@ body{margin:0;font-family:system-ui,-apple-system,Segoe UI,Roboto,Arial,sans-ser
 .stage{display:grid;grid-template-columns:44px 1fr 44px;gap:10px;align-items:center}
 .arrow{width:44px;height:44px;border-radius:50%;border:1px solid #cbd5e1;background:white;color:#1e40af;font-size:24px;font-weight:900;cursor:pointer} .arrow:disabled{opacity:.35}
 .book{width:100%;height:560px;min-height:560px;display:flex;align-items:center;justify-content:center;overflow:visible;position:relative}
-.flip-page{padding:22px;background:linear-gradient(rgba(255,255,255,.76),rgba(255,255,255,.76)),repeating-linear-gradient(0deg,#f8f1df 0,#f8f1df 31px,#e9dec0 32px);border:1px solid #d8caa8;overflow:hidden;box-shadow:inset 0 0 20px rgba(98,72,45,.06)}
+.flip-page{padding:22px;background:linear-gradient(rgba(255,255,255,.76),rgba(255,255,255,.76)),repeating-linear-gradient(0deg,#f8f1df 0,#f8f1df 31px,#e9dec0 32px);border:1px solid #d8caa8;overflow:hidden;box-shadow:inset 0 0 20px rgba(98,72,45,.06);position:relative}
+.flip-cover{padding:0!important;background:linear-gradient(135deg,#183b55,#0f4f4c 60%,#163c4d)!important;border:4px solid #0b2f3d!important;color:white}
+.flip-cover::before{content:"";position:absolute;inset:16px;border:2px solid rgba(218,184,88,.58);border-radius:12px 20px 20px 12px;pointer-events:none}
+.flip-cover::after{content:"";position:absolute;left:0;top:0;bottom:0;width:42px;background:linear-gradient(90deg,#082b36,#174250);border-right:2px solid rgba(255,255,255,.08)}
+.flip-cover-inner{position:absolute;inset:24px 24px 24px 56px;display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;z-index:2}
+.flip-cover-inner img{width:155px;max-width:44%;filter:drop-shadow(0 5px 10px rgba(0,0,0,.25))}
+.flip-cover-title{font:italic 44px Georgia,serif;margin:8px 0 4px}
+.flip-cover-sub{font-weight:900;color:#d1fae5;font-size:19px}
+.flip-cover-gen{margin-top:12px;color:#cbd5e1;font-size:14px}
+.flip-cover-open{margin-top:20px;border:1px solid rgba(255,255,255,.3);background:rgba(255,255,255,.1);padding:9px 13px;border-radius:999px;font-weight:800}
+.flip-inside-cover{display:grid;place-items:center;text-align:center;color:#64748b;font-family:Georgia,serif;font-style:italic;background:linear-gradient(rgba(255,255,255,.82),rgba(255,255,255,.82)),repeating-linear-gradient(0deg,#f8f1df 0,#f8f1df 31px,#e9dec0 32px)!important}
 .flip-page::after{content:"";position:absolute;inset:0;pointer-events:none;box-shadow:inset 0 0 30px rgba(98,72,45,.08)}
 .photo-open{display:block;width:100%;padding:0;border:0;background:transparent;cursor:zoom-in}
 .page-title{font:italic 20px Georgia,serif;color:#475569;margin-bottom:12px}
@@ -188,11 +198,7 @@ input,select,textarea{width:100%;padding:11px 12px;border:1px solid #cbd5e1;bord
     <div class="brand"><img src="./logo-e6.png" alt="E-6"><div><h1>📖 Álbum de recuerdos</h1><p>Fotos, anécdotas y pedazos de historia de Chismoeti.</p></div></div>
     <div class="actions"><a class="btn secondary" href="./index.html">← Volver</a><button id="goUpload" class="btn">📷 Agregar recuerdo</button></div>
   </div>
-  <div id="coverWrap" class="cover-wrap">
-    <div id="cover" class="cover" role="button" tabindex="0" aria-label="Abrir álbum">
-      <div class="cover-content"><img class="cover-logo" src="./logo-e6.png" alt=""><div class="cover-title">Chismoeti</div><div class="cover-sub">Álbum de recuerdos</div><div class="cover-gen">Generación 1997–2000 · E-6</div><div class="open-pill">Abrir álbum →</div></div>
-    </div>
-  </div>
+  
   <section id="album" class="album">
     <div id="filters" class="filters"></div>
     <div id="peopleNav" class="people-nav"></div>
@@ -235,7 +241,7 @@ input,select,textarea{width:100%;padding:11px 12px;border:1px solid #cbd5e1;bord
 const SUPABASE_URL='https://ojetnxragvscilqvdvqb.supabase.co',SUPABASE_KEY='sb_publishable_KY1zWYr0UV_uC4s40DUQkg_Na0IDP96';
 const client=window.supabase.createClient(SUPABASE_URL,SUPABASE_KEY,{auth:{persistSession:true,autoRefreshToken:true,detectSessionInUrl:true}});
 const $=id=>document.getElementById(id),esc=v=>String(v??"").replaceAll("&","&amp;").replaceAll("<","&lt;").replaceAll(">","&gt;").replaceAll('"',"&quot;").replaceAll("'","&#039;");
-let photos=[],filtered=[],spreads=[],spread=0,filter="Todas",user=null,profile=null,processed=null,editing=null,pageFlip=null,albumOpened=false;const PAGE_SIZE=8;
+let photos=[],filtered=[],spreads=[],spread=0,filter="Todas",user=null,profile=null,processed=null,editing=null,pageFlip=null;const PAGE_SIZE=8;
 function fmtDate(v){if(!v)return"";const[y,m,d]=v.split("-").map(Number);return new Intl.DateTimeFormat("es-MX",{year:"numeric",month:"short",day:"numeric"}).format(new Date(Date.UTC(y,m-1,d)))}
 function fmtCreated(v){try{return new Intl.DateTimeFormat("es-MX",{dateStyle:"medium"}).format(new Date(v))}catch{return""}}
 async function auth(){const{data:{session}}=await client.auth.getSession();user=session?.user||null;profile=null;if(user){const{data}=await client.from("perfiles").select("id,nombre,user_id").eq("user_id",user.id).maybeSingle();profile=data||null}$("authNote").classList.toggle("hidden",!!user);$("form").querySelectorAll("input,textarea,select,button").forEach(x=>x.disabled=!user)}
@@ -275,7 +281,7 @@ function renderPeopleNav(){
   $("peopleNav").querySelectorAll("[data-person-index]").forEach(b=>b.onclick=()=>{
     const logical=+b.dataset.personIndex;
     spread=logical;
-    if(pageFlip) pageFlip.turnToPage(logical*2);
+    if(pageFlip) pageFlip.turnToPage(logical*2+2);
     updateBookUI(logical*2);
   });
 }
@@ -286,11 +292,7 @@ function apply(f){
   spread=0;
   renderFilters();
   buildSpreads();
-  if(albumOpened) renderBook(0);
-  else {
-    $("indicator").textContent=spreads.length?spreads[0].person+" · sección 1 de "+spreads.length:"Sin fotos";
-    renderPeopleNav();
-  }
+  renderBook(0);
 }
 function card(p,i){const mine=user&&p.user_id===user.id;return `<article class="mem" style="--r:${[-1.2,.8,-.5,1.1][i%4]}deg"><button class="photo-open" type="button" data-view="${p.id}"><img src="${esc(p.foto_url)}" alt="Recuerdo" loading="lazy"></button>${p.descripcion?`<div class="cap">${esc(p.descripcion)}</div>`:""}<div class="meta">${p.fecha_recuerdo?`<span>📅 ${esc(fmtDate(p.fecha_recuerdo))}</span>`:`<span>📌 ${esc(fmtCreated(p.created_at))}</span>`}${p.categoria?`<span>🏷️ ${esc(p.categoria)}</span>`:""}</div><div class="who">Subió: ${esc(p.uploader)}</div>${mine?`<div class="mine"><button class="mini" data-edit="${p.id}" type="button">✏️ Editar</button><button class="mini del" data-del="${p.id}" type="button">🗑️ Borrar</button></div>`:""}</article>`}
 function page(items,title){return items.length?`<div class="page-title">${title}</div><div class="grid">${items.map(card).join("")}</div>`:`<div class="page-title">${title}</div><div class="empty"><div><div style="font-size:42px">📷</div><strong>Aún no hay fotos aquí.</strong><br>Este espacio espera un buen chisme.</div></div>`}
@@ -312,15 +314,16 @@ function spreadHtml(index){
 }
 
 function updateBookUI(pageIndex){
-  const logical=Math.max(0,Math.min(spreads.length-1,Math.floor((pageIndex||0)/2)));
+  const logical=Math.max(0,Math.min(spreads.length-1,Math.floor(Math.max(0,(pageIndex||0)-2)/2)));
   spread=isFinite(logical)?logical:0;
   const section=spreads[spread];
 
   $("prev").disabled=!pageFlip || pageFlip.getCurrentPageIndex()<=0;
   $("next").disabled=!pageFlip || pageFlip.getCurrentPageIndex()>=pageFlip.getPageCount()-1;
-  $("indicator").textContent=section
-    ? `${section.person} · sección ${spread+1} de ${spreads.length}`
-    : "Sin fotos";
+  const currentPage=pageFlip?pageFlip.getCurrentPageIndex():0;
+  $("indicator").textContent=currentPage<2
+    ? "Portada"
+    : (section ? `${section.person} · sección ${spread+1} de ${spreads.length}` : "Sin fotos");
   renderPeopleNav();
   bind();
 }
@@ -334,32 +337,41 @@ function renderBook(startPage=0){
   }
   book.innerHTML="";
 
+  const cover=document.createElement("div");
+  cover.className="flip-page flip-cover";
+  cover.setAttribute("data-density","hard");
+  cover.innerHTML='<div class="flip-cover-inner"><img src="./logo-e6.png" alt="E-6"><div class="flip-cover-title">Chismoeti</div><div class="flip-cover-sub">Álbum de recuerdos</div><div class="flip-cover-gen">Generación 1997–2000 · E-6</div><div class="flip-cover-open">Abrir álbum →</div></div>';
+  book.appendChild(cover);
+
+  const inside=document.createElement("div");
+  inside.className="flip-page flip-inside-cover";
+  inside.innerHTML='<div><div style="font-size:46px">📖</div><div>Álbum de recuerdos</div><div style="font:normal 13px system-ui;color:#94a3b8;margin-top:8px">Usa las flechas o arrastra la esquina de la hoja.</div></div>';
+  book.appendChild(inside);
+
   if(!spreads.length){
-    book.innerHTML='<div class="flip-page"><div class="empty"><div><div style="font-size:42px">📷</div><strong>Aún no hay fotos aquí.</strong></div></div></div>';
-    $("prev").disabled=true;
-    $("next").disabled=true;
-    $("indicator").textContent="Sin fotos";
-    renderPeopleNav();
-    return;
+    const empty=document.createElement("div");
+    empty.className="flip-page";
+    empty.innerHTML='<div class="empty"><div><div style="font-size:42px">📷</div><strong>Aún no hay fotos aquí.</strong></div></div>';
+    book.appendChild(empty);
+  } else {
+    spreads.forEach((section,index)=>{
+      const html=spreadHtml(index);
+
+      const left=document.createElement("div");
+      left.className="flip-page";
+      left.dataset.spread=index;
+      left.dataset.person=section.person;
+      left.innerHTML=html.left;
+      book.appendChild(left);
+
+      const right=document.createElement("div");
+      right.className="flip-page";
+      right.dataset.spread=index;
+      right.dataset.person=section.person;
+      right.innerHTML=html.right;
+      book.appendChild(right);
+    });
   }
-
-  spreads.forEach((section,index)=>{
-    const html=spreadHtml(index);
-
-    const left=document.createElement("div");
-    left.className="flip-page";
-    left.dataset.spread=index;
-    left.dataset.person=section.person;
-    left.innerHTML=html.left;
-    book.appendChild(left);
-
-    const right=document.createElement("div");
-    right.className="flip-page";
-    right.dataset.spread=index;
-    right.dataset.person=section.person;
-    right.innerHTML=html.right;
-    book.appendChild(right);
-  });
 
   pageFlip=new St.PageFlip(book,{
     width:500,
@@ -375,7 +387,7 @@ function renderBook(startPage=0){
     startPage:Math.min(startPage,Math.max(0,book.children.length-1)),
     autoSize:true,
     maxShadowOpacity:.45,
-    showCover:false,
+    showCover:true,
     mobileScrollSupport:false,
     swipeDistance:24,
     clickEventForward:true,
@@ -393,32 +405,12 @@ function renderBook(startPage=0){
   },50);
 }
 
-function openAlbum(){
-  const c=$("cover"),wrap=$("coverWrap"),album=$("album");
-  if(c.classList.contains("opening"))return;
-  c.classList.add("opening");
-  setTimeout(()=>{
-    wrap.style.display="none";
-    album.classList.add("show","revealing");
-    albumOpened=true;
-    setTimeout(()=>{
-      album.classList.remove("revealing");
-      renderBook(spread*2);
-    },80);
-    window.scrollTo({top:0,behavior:"smooth"});
-  },620);
-}
-
 function turnPage(dir){
   if(!pageFlip)return;
   if(dir==="prev") pageFlip.flipPrev("top");
   else pageFlip.flipNext("top");
 }
 
-$("cover").onclick=openAlbum;
-$("cover").onkeydown=e=>{
-  if(e.key==="Enter"||e.key===" "){e.preventDefault();openAlbum()}
-};
 $("prev").onclick=()=>turnPage("prev");
 $("next").onclick=()=>turnPage("next");
 $("goUpload").onclick=()=>$("uploadPanel").scrollIntoView({behavior:"smooth"});
