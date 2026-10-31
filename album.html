@@ -245,7 +245,7 @@ window.addEventListener("error",e=>console.error("Album JS:",e.error||e.message)
 const SUPABASE_URL='https://ojetnxragvscilqvdvqb.supabase.co',SUPABASE_KEY='sb_publishable_KY1zWYr0UV_uC4s40DUQkg_Na0IDP96';
 const client=window.supabase.createClient(SUPABASE_URL,SUPABASE_KEY,{auth:{persistSession:true,autoRefreshToken:true,detectSessionInUrl:true}});
 const $=id=>document.getElementById(id),esc=v=>String(v??"").replaceAll("&","&amp;").replaceAll("<","&lt;").replaceAll(">","&gt;").replaceAll('"',"&quot;").replaceAll("'","&#039;");
-let photos=[],filtered=[],spreads=[],spread=0,filter="Todas",user=null,profile=null,processed=null,editing=null,pageFlip=null;const PAGE_SIZE=8;
+let photos=[],filtered=[],spreads=[],spread=0,filter="Todas",user=null,profile=null,processed=null,editing=null,pageFlip=null,bookRenderToken=0;const PAGE_SIZE=8;
 function fmtDate(v){if(!v)return"";const[y,m,d]=v.split("-").map(Number);return new Intl.DateTimeFormat("es-MX",{year:"numeric",month:"short",day:"numeric"}).format(new Date(Date.UTC(y,m-1,d)))}
 function fmtCreated(v){try{return new Intl.DateTimeFormat("es-MX",{dateStyle:"medium"}).format(new Date(v))}catch{return""}}
 async function auth(){const{data:{session}}=await client.auth.getSession();user=session?.user||null;profile=null;if(user){const{data}=await client.from("perfiles").select("id,nombre,user_id").eq("user_id",user.id).maybeSingle();profile=data||null}$("authNote").classList.toggle("hidden",!!user);$("form").querySelectorAll("input,textarea,select,button").forEach(x=>x.disabled=!user)}
@@ -333,11 +333,38 @@ function updateBookUI(pageIndex){
 }
 
 function renderBook(startPage=0){
-  const book=$("book");
+  const myToken=++bookRenderToken;
+  let book=$("book");
 
   if(pageFlip){
-    try{pageFlip.destroy()}catch(e){console.warn("destroy",e)}
+    const stage=book?.parentNode;
+    const nextBtn=$("next");
+
+    try{
+      pageFlip.destroy();
+    }catch(e){
+      console.warn("destroy",e);
+      if(book && book.parentNode) book.remove();
+    }
+
     pageFlip=null;
+
+    // destroy() de StPageFlip elimina el contenedor raíz.
+    // Lo recreamos antes de volver a construir el álbum.
+    book=document.createElement("div");
+    book.id="book";
+    book.className="book";
+    if(stage && nextBtn) stage.insertBefore(book,nextBtn);
+  }
+
+  // Por seguridad, si alguna ejecución anterior ya quitó el libro.
+  if(!book || !book.isConnected){
+    const stage=document.querySelector(".stage");
+    const nextBtn=$("next");
+    book=document.createElement("div");
+    book.id="book";
+    book.className="book";
+    if(stage && nextBtn) stage.insertBefore(book,nextBtn);
   }
 
   book.classList.remove("book-fallback");
@@ -449,8 +476,10 @@ function renderBook(startPage=0){
     });
 
     setTimeout(()=>{
+      if(myToken!==bookRenderToken)return;
       if(!pageFlip || pageFlip.getPageCount()<1){
-        throw new Error("PageFlip no generó páginas.");
+        showStaticFallback(new Error("PageFlip no generó páginas."));
+        return;
       }
       updateBookUI(pageFlip.getCurrentPageIndex());
       bind();
