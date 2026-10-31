@@ -216,6 +216,34 @@ input,select,textarea{width:100%;padding:11px 12px;border:1px solid #cbd5e1;bord
   @keyframes mobilePageExit{to{opacity:.32;transform:translateX(-12px) scale(.99)}}
   @keyframes mobilePageEnter{from{opacity:.32;transform:translateX(12px) scale(.99)}to{opacity:1;transform:translateX(0) scale(1)}}
 }
+@media(max-width:700px){
+  .book.mobile-book{
+    display:block!important;
+    height:auto!important;min-height:0!important;width:100%!important;
+    padding:0!important;margin:0!important;
+    border-radius:0!important;overflow:visible!important;
+    transform:none!important;perspective:none!important;
+    opacity:1;transition:opacity .13s ease;
+  }
+  .book.mobile-book.mobile-transition{opacity:.25}
+  .mobile-page{
+    background:linear-gradient(145deg,#fffcf5,#f6edda)!important;
+    border:1px solid #dfd0ae;border-radius:9px;
+    box-shadow:0 8px 20px rgba(51,65,85,.12);
+    padding:18px 15px;min-height:390px;
+    width:100%;max-width:500px;margin:0 auto;
+    overflow:visible!important;
+  }
+  .mobile-page .grid{display:block!important}
+  .mobile-page .mem{max-width:none!important;transform:none!important;margin:12px 0 0}
+  .mobile-page .mem img{max-height:none!important;height:auto!important;aspect-ratio:auto!important;object-fit:contain!important}
+  .mobile-page .cap{display:block!important;overflow:visible!important;-webkit-line-clamp:unset!important}
+  .mobile-cover{display:flex;align-items:center;justify-content:center;background:linear-gradient(140deg,#183b55,#0e5251)!important;color:white;text-align:center;min-height:420px}
+  .mobile-cover-inner img{display:block;width:115px;margin:0 auto 12px}
+  .mobile-cover-inner h2{font:italic 36px Georgia,serif;margin:10px}
+  .mobile-cover-inner p{color:#cbd5e1}
+  .mobile-cover-inner span{display:inline-block;border:1px solid #88a9ab;border-radius:30px;padding:9px;margin-top:12px}
+}
 </style>
 </head>
 <body>
@@ -309,8 +337,14 @@ function renderPeopleNav(){
   $("peopleNav").querySelectorAll("[data-person-index]").forEach(b=>b.onclick=()=>{
     const logical=+b.dataset.personIndex;
     spread=logical;
-    if(pageFlip) pageFlip.turnToPage(logical*2+2);
-    updateBookUI(logical*2+2);
+    if(isMobileAlbum()){
+      const idx=mobilePages.findIndex(p=>p.spreadIndex===logical);
+      mobileIndex=idx>=0?idx:0;
+      renderMobilePage();
+    }else{
+      if(pageFlip) pageFlip.turnToPage(logical*2+2);
+      updateBookUI(logical*2+2);
+    }
   });
 }
 
@@ -357,6 +391,51 @@ function updateBookUI(pageIndex){
   bind();
 }
 
+function buildMobilePages(){
+  mobilePages=[{cover:true,spreadIndex:-1}];
+  spreads.forEach((s,spreadIndex)=>{
+    s.items.forEach((photo,i)=>mobilePages.push({photo,person:s.person,spreadIndex,part:s.part,partCount:s.totalParts}));
+  });
+}
+function renderMobilePage(){
+  const book=$("book");
+  if(!book)return;
+  const item=mobilePages[mobileIndex]||mobilePages[0];
+  if(!item)return;
+  if(item.cover){
+    book.innerHTML='<div class="mobile-page mobile-cover"><div class="mobile-cover-inner"><img src="./logo-e6.png" alt="E-6"><h2>Chismoeti</h2><strong>Álbum de recuerdos</strong><p>Generación 1997–2000 · E-6</p><span>Abre el álbum con la flecha →</span></div></div>';
+  }else{
+    const title='<span class="section-badge">👤 '+esc(item.person)+'</span>';
+    book.innerHTML='<div class="mobile-page">'+page([item.photo],title)+'</div>';
+  }
+  $("prev").disabled=mobileIndex===0;
+  $("next").disabled=mobileIndex>=mobilePages.length-1;
+  $("indicator").textContent=item.cover?"Portada":item.person+" · foto "+mobileIndex+" de "+(mobilePages.length-1);
+  spread=item.cover?0:item.spreadIndex;
+  renderPeopleNav();
+  bind();
+}
+function renderMobileBook(){
+  const book=$("book");
+  if(!book)return;
+  book.className="book mobile-book";
+  buildMobilePages();
+  mobileIndex=0;
+  renderMobilePage();
+}
+function mobileStep(dir){
+  const target=mobileIndex+(dir==="next"?1:-1);
+  if(mobileTurning||target<0||target>=mobilePages.length)return;
+  mobileTurning=true;
+  const b=$("book");
+  b.classList.add("mobile-transition");
+  setTimeout(()=>{
+    mobileIndex=target;
+    renderMobilePage();
+    b.classList.remove("mobile-transition");
+    mobileTurning=false;
+  },135);
+}
 function renderBook(startPage=0){
   const myToken=++bookRenderToken;
   let book=$("book");
@@ -392,8 +471,12 @@ function renderBook(startPage=0){
     if(stage && nextBtn) stage.insertBefore(book,nextBtn);
   }
 
-  book.classList.remove("book-fallback");
+  book.classList.remove("book-fallback","mobile-book");
   book.innerHTML="";
+  if(isMobileAlbum()){
+    renderMobileBook();
+    return;
+  }
 
   // Construimos todo el contenido primero.
   const pages=[];
@@ -516,27 +599,10 @@ function renderBook(startPage=0){
   }
 }
 
-let mobileTurning=false;
+let mobileTurning=false, mobileIndex=0, mobilePages=[];
 function turnPage(dir){
-  if(!pageFlip || mobileTurning)return;
-  if(isMobileAlbum() && dir==="next"){
-    const current=pageFlip.getCurrentPageIndex();
-    const last=pageFlip.getPageCount()-1;
-    if(current>=last)return;
-    const book=$("book");
-    mobileTurning=true;
-    book.classList.add("mobile-page-exit");
-    setTimeout(()=>{
-      try{
-        if(pageFlip)pageFlip.turnToPage(Math.min(current+1,last));
-      }finally{
-        book.classList.remove("mobile-page-exit");
-        book.classList.add("mobile-page-enter");
-        setTimeout(()=>{book.classList.remove("mobile-page-enter");mobileTurning=false},280);
-      }
-    },170);
-    return;
-  }
+  if(isMobileAlbum()){mobileStep(dir);return}
+  if(!pageFlip)return;
   if(dir==="prev")pageFlip.flipPrev("top");
   else pageFlip.flipNext("top");
 }
