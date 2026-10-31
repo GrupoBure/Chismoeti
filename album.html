@@ -244,6 +244,23 @@ input,select,textarea{width:100%;padding:11px 12px;border:1px solid #cbd5e1;bord
   .mobile-cover-inner p{color:#cbd5e1}
   .mobile-cover-inner span{display:inline-block;border:1px solid #88a9ab;border-radius:30px;padding:9px;margin-top:12px}
 }
+/* Protección del marco exterior en escritorio: no alterar las capas 3D de StPageFlip */
+@media(min-width:701px){
+  .stage{
+    height:610px;
+    min-height:610px;
+    overflow:hidden;
+    isolation:isolate;
+    align-items:center;
+  }
+  .stage>.book{
+    height:560px;
+    min-height:560px;
+    max-height:560px;
+    overflow:visible;
+  }
+  .stage>.arrow{position:relative;z-index:2}
+}
 </style>
 </head>
 <body>
