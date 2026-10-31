@@ -78,7 +78,7 @@ input,select,textarea{width:100%;padding:11px 12px;border:1px solid #cbd5e1;bord
 .modal{position:fixed;inset:0;background:rgba(15,23,42,.65);display:none;align-items:center;justify-content:center;padding:18px;z-index:9999} .modal.show{display:flex}
 .modal-card{width:min(560px,100%);background:white;border-radius:18px;padding:18px;max-height:90vh;overflow:auto} .modal-actions{display:flex;justify-content:flex-end;gap:8px;margin-top:14px;flex-wrap:wrap}
 @media(max-width:850px){.book{height:520px;min-height:520px}.stage{grid-template-columns:36px 1fr 36px;gap:5px}.arrow{width:36px;height:36px}}
-@media(max-width:620px){.container{padding:12px}.brand img{width:64px}.cover-title{font-size:34px}.book{height:500px;min-height:500px}.flip-page{padding:14px}.grid{gap:9px}.cap{font-size:12px}.form{grid-template-columns:1fr}.field.full{grid-column:auto}}
+@media(max-width:620px){.container{padding:12px}.brand img{width:64px}.cover-title{font-size:34px}.book{height:440px;min-height:440px}.flip-page{padding:14px}.grid{gap:9px}.cap{font-size:12px}.form{grid-template-columns:1fr}.field.full{grid-column:auto}}
 
 /* ===== Animaciones del álbum ===== */
 @keyframes coverOpen {
@@ -200,6 +200,18 @@ input,select,textarea{width:100%;padding:11px 12px;border:1px solid #cbd5e1;bord
   .photo-viewer-info{ padding:16px; }
 }
 
+@media(max-width:700px){
+  .book{height:440px!important;min-height:440px!important;overflow:visible!important;border-radius:0!important}
+  .flip-page{padding:14px!important}
+  .flip-page .grid{grid-template-columns:1fr!important;gap:10px!important}
+  .flip-page .mem{transform:none!important;margin:0 auto;max-width:100%;padding:8px}
+  .flip-page .mem img{max-height:185px!important;aspect-ratio:4/3;object-fit:contain;background:#f1f5f9}
+  .flip-page .cap{font-size:13px;line-height:1.3;-webkit-line-clamp:3}
+  .flip-page .page-title{font-size:16px;margin-bottom:10px}
+  .flip-page .section-badge{font-size:11px}
+  .flip-cover-title{font-size:31px}
+  .flip-cover-inner{inset:18px 16px 18px 45px}
+}
 </style>
 </head>
 <body>
@@ -252,7 +264,8 @@ window.addEventListener("error",e=>console.error("Album JS:",e.error||e.message)
 const SUPABASE_URL='https://ojetnxragvscilqvdvqb.supabase.co',SUPABASE_KEY='sb_publishable_KY1zWYr0UV_uC4s40DUQkg_Na0IDP96';
 const client=window.supabase.createClient(SUPABASE_URL,SUPABASE_KEY,{auth:{persistSession:true,autoRefreshToken:true,detectSessionInUrl:true}});
 const $=id=>document.getElementById(id),esc=v=>String(v??"").replaceAll("&","&amp;").replaceAll("<","&lt;").replaceAll(">","&gt;").replaceAll('"',"&quot;").replaceAll("'","&#039;");
-let photos=[],filtered=[],spreads=[],spread=0,filter="Todas",user=null,profile=null,processed=null,editing=null,pageFlip=null,bookRenderToken=0;const PAGE_SIZE=8;
+let photos=[],filtered=[],spreads=[],spread=0,filter="Todas",user=null,profile=null,processed=null,editing=null,pageFlip=null,bookRenderToken=0;const isMobileAlbum=()=>window.innerWidth<=700;
+const pageSize=()=>isMobileAlbum()?2:8;
 function fmtDate(v){if(!v)return"";const[y,m,d]=v.split("-").map(Number);return new Intl.DateTimeFormat("es-MX",{year:"numeric",month:"short",day:"numeric"}).format(new Date(Date.UTC(y,m-1,d)))}
 function fmtCreated(v){try{return new Intl.DateTimeFormat("es-MX",{dateStyle:"medium"}).format(new Date(v))}catch{return""}}
 async function auth(){const{data:{session}}=await client.auth.getSession();user=session?.user||null;profile=null;if(user){const{data}=await client.from("perfiles").select("id,nombre,user_id").eq("user_id",user.id).maybeSingle();profile=data||null}$("authNote").classList.toggle("hidden",!!user);$("form").querySelectorAll("input,textarea,select,button").forEach(x=>x.disabled=!user)}
@@ -275,8 +288,8 @@ function buildSpreads(){
   spreads=[];
   for(const name of names){
     const items=groups.get(name).slice().sort((a,b)=>new Date(a.created_at)-new Date(b.created_at));
-    for(let i=0;i<items.length;i+=PAGE_SIZE){
-      spreads.push({person:name,items:items.slice(i,i+PAGE_SIZE),part:Math.floor(i/PAGE_SIZE)+1,totalParts:Math.ceil(items.length/PAGE_SIZE)});
+    for(let i=0;i<items.length;i+=pageSize()){
+      spreads.push({person:name,items:items.slice(i,i+pageSize()),part:Math.floor(i/pageSize())+1,totalParts:Math.ceil(items.length/pageSize())});
     }
   }
   renderPeopleNav();
@@ -317,9 +330,10 @@ function spreadHtml(index){
   const s=section.items;
   const suffix=section.totalParts>1?` · parte ${section.part} de ${section.totalParts}`:"";
   const title=`<span class="section-badge">👤 ${esc(section.person)}${suffix}</span>`;
+  const perSide=isMobileAlbum()?1:4;
   return {
-    left:page(s.slice(0,4),title),
-    right:page(s.slice(4,8),s.length>4?`Recuerdos de ${esc(section.person)}`:""),
+    left:page(s.slice(0,perSide),title),
+    right:page(s.slice(perSide,perSide*2),s.length>perSide?`Recuerdos de ${esc(section.person)}`:""),
     section
   };
 }
@@ -450,12 +464,12 @@ function renderBook(startPage=0){
     const pageElements=book.querySelectorAll(".flip-page");
 
     pageFlip=new St.PageFlip(book,{
-      width:500,
-      height:560,
+      width:isMobileAlbum()?300:500,
+      height:isMobileAlbum()?440:560,
       size:"stretch",
-      minWidth:270,
+      minWidth:isMobileAlbum()?220:270,
       maxWidth:520,
-      minHeight:420,
+      minHeight:isMobileAlbum()?325:420,
       maxHeight:620,
       drawShadow:true,
       flippingTime:900,
