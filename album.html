@@ -359,8 +359,8 @@ function renderPeopleNav(){
       mobileIndex=idx>=0?idx:0;
       renderMobilePage();
     }else{
-      if(pageFlip) pageFlip.turnToPage(logical*2+2);
-      updateBookUI(logical*2+2);
+      if(pageFlip) pageFlip.turnToPage(logical*2+3);
+      updateBookUI(logical*2+3);
     }
   });
 }
@@ -394,14 +394,14 @@ function spreadHtml(index){
 }
 
 function updateBookUI(pageIndex){
-  const logical=Math.max(0,Math.min(spreads.length-1,Math.floor(Math.max(0,(pageIndex||0)-2)/2)));
+  const logical=Math.max(0,Math.min(spreads.length-1,Math.floor(Math.max(0,(pageIndex||0)-3)/2)));
   spread=isFinite(logical)?logical:0;
   const section=spreads[spread];
 
   $("prev").disabled=!pageFlip || pageFlip.getCurrentPageIndex()<=0;
   $("next").disabled=!pageFlip || pageFlip.getCurrentPageIndex()>=pageFlip.getPageCount()-1;
   const currentPage=pageFlip?pageFlip.getCurrentPageIndex():0;
-  $("indicator").textContent=currentPage<2
+  $("indicator").textContent=currentPage<3
     ? "Portada"
     : (section ? `${section.person} · sección ${spread+1} de ${spreads.length}` : "Sin fotos");
   renderPeopleNav();
@@ -508,6 +508,15 @@ function renderBook(startPage=0){
   inside.className="flip-page flip-inside-cover";
   inside.innerHTML='<div class="inside-cover-content"><img src="./logo-e6.png" alt=""><div class="inside-cover-title">Nuestra generación</div><div class="inside-cover-copy">Fotos, reencuentros y recuerdos de la E-6 · Generación 1997–2000.<br><br>Usa las flechas o arrastra la esquina para recorrer el álbum.</div></div>';
   pages.push(inside);
+
+  // Con showCover:true, la portada ocupa sola la primera vista.
+  // La página 1 (reverso) y la 2 forman el primer pliego interior.
+  // Este separador completa ese pliego: cada persona empieza en página impar
+  // y sus dos caras quedan juntas (3-4, 5-6, 7-8...).
+  const intro=document.createElement("div");
+  intro.className="flip-page flip-inside-cover";
+  intro.innerHTML='<div class="inside-cover-content"><div class="inside-cover-title">Nuestros recuerdos</div><div class="inside-cover-copy">Cada compañero tiene su propia sección en este álbum. Usa las flechas para pasar a la siguiente.</div></div>';
+  pages.push(intro);
 
   if(!spreads.length){
     const empty=document.createElement("div");
