@@ -378,7 +378,9 @@ function page(items,title){return items.length?`<div class="page-title">${title}
 function bind(){
   document.querySelectorAll("[data-edit]").forEach(b=>b.onclick=()=>openEdit(+b.dataset.edit));
   document.querySelectorAll("[data-del]").forEach(b=>b.onclick=()=>removePhoto(+b.dataset.del));
-  document.querySelectorAll("[data-view]").forEach(img=>img.onclick=()=>openViewer(+img.dataset.view));
+  document.querySelectorAll("[data-view]").forEach(img=>{
+    img.onclick=e=>{e.preventDefault();e.stopPropagation();openViewer(+img.dataset.view)};
+  });
 }
 function spreadHtml(index){
   const section=spreads[index]||{person:"Sin fotos",items:[],part:1,totalParts:1};
@@ -593,7 +595,9 @@ function renderBook(startPage=0){
       showCover:true,
       mobileScrollSupport:true,
       swipeDistance:30,
-      useMouseEvents:!isMobileAlbum()
+      useMouseEvents:!isMobileAlbum(),
+      disableFlipByClick:true,
+      clickEventForward:true
     });
 
     pageFlip.loadFromHTML(pageElements);
