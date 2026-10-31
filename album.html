@@ -434,7 +434,7 @@ function renderBook(startPage=0){
       swipeDistance:30
     });
 
-    pageFlip.loadFromHTML(pageElements);
+    pageFlip.loadFromHtml(pageElements);
 
     pageFlip.on("flip",e=>{
       updateBookUI(Number(e.data)||0);
