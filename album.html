@@ -35,8 +35,9 @@ body{margin:0;font-family:system-ui,-apple-system,Segoe UI,Roboto,Arial,sans-ser
 .stage{display:grid;grid-template-columns:44px 1fr 44px;gap:10px;align-items:center}
 .arrow{width:44px;height:44px;border-radius:50%;border:1px solid #cbd5e1;background:white;color:#1e40af;font-size:24px;font-weight:900;cursor:pointer} .arrow:disabled{opacity:.35}
 .book{width:100%;height:560px;min-height:560px;display:flex;align-items:center;justify-content:center;overflow:visible;position:relative}
-.book-fallback{display:grid!important;grid-template-columns:1fr 1fr;gap:16px;height:auto!important;min-height:0!important}
-.book-fallback .flip-page{display:block!important;position:relative!important;transform:none!important;width:auto!important;height:auto!important;min-height:520px}
+.book-fallback{display:grid!important;grid-template-columns:1fr 1fr;gap:16px;height:auto!important;min-height:0!important;overflow:visible!important}
+.book-fallback .flip-page{display:block!important;position:relative!important;transform:none!important;width:auto!important;height:auto!important;min-height:520px;visibility:visible!important;opacity:1!important}
+@media(max-width:700px){.book-fallback{grid-template-columns:1fr!important}}
 .flip-page{padding:22px;background:linear-gradient(rgba(255,255,255,.76),rgba(255,255,255,.76)),repeating-linear-gradient(0deg,#f8f1df 0,#f8f1df 31px,#e9dec0 32px);border:1px solid #d8caa8;overflow:hidden;box-shadow:inset 0 0 20px rgba(98,72,45,.06);position:relative}
 .flip-cover{padding:0!important;background:linear-gradient(135deg,#183b55,#0f4f4c 60%,#163c4d)!important;border:4px solid #0b2f3d!important;color:white}
 .flip-cover::before{content:"";position:absolute;inset:16px;border:2px solid rgba(218,184,88,.58);border-radius:12px 20px 20px 12px;pointer-events:none}
@@ -335,30 +336,33 @@ function renderBook(startPage=0){
   const book=$("book");
 
   if(pageFlip){
-    try{pageFlip.destroy()}catch(e){console.warn(e)}
+    try{pageFlip.destroy()}catch(e){console.warn("destroy",e)}
     pageFlip=null;
   }
 
   book.classList.remove("book-fallback");
   book.innerHTML="";
 
+  // Construimos todo el contenido primero.
+  const pages=[];
+
   const cover=document.createElement("div");
   cover.className="flip-page flip-cover";
-  cover.setAttribute("data-density","hard");
+  cover.dataset.density="hard";
   cover.innerHTML='<div class="flip-cover-inner"><img src="./logo-e6.png" alt="E-6"><div class="flip-cover-title">Chismoeti</div><div class="flip-cover-sub">Álbum de recuerdos</div><div class="flip-cover-gen">Generación 1997–2000 · E-6</div><div class="flip-cover-open">Abrir álbum →</div></div>';
-  book.appendChild(cover);
+  pages.push(cover);
 
   const inside=document.createElement("div");
   inside.className="flip-page flip-inside-cover";
-  inside.innerHTML='<div><div style="font-size:46px">📖</div><div>Álbum de recuerdos</div><div style="font:normal 13px system-ui;color:#94a3b8;margin-top:8px">Usa las flechas o arrastra la esquina de la hoja.</div></div>';
-  book.appendChild(inside);
+  inside.innerHTML='<div><div style="font-size:46px">📖</div><div>Álbum de recuerdos</div><div style="font:normal 13px system-ui;color:#94a3b8;margin-top:8px">Usa las flechas o arrastra la esquina.</div></div>';
+  pages.push(inside);
 
   if(!spreads.length){
     const empty=document.createElement("div");
     empty.className="flip-page";
     empty.innerHTML='<div class="empty"><div><div style="font-size:42px">📷</div><strong>Aún no hay fotos aquí.</strong></div></div>';
-    book.appendChild(empty);
-  } else {
+    pages.push(empty);
+  }else{
     spreads.forEach((section,index)=>{
       const html=spreadHtml(index);
 
@@ -367,26 +371,35 @@ function renderBook(startPage=0){
       left.dataset.spread=index;
       left.dataset.person=section.person;
       left.innerHTML=html.left;
-      book.appendChild(left);
+      pages.push(left);
 
       const right=document.createElement("div");
       right.className="flip-page";
       right.dataset.spread=index;
       right.dataset.person=section.person;
       right.innerHTML=html.right;
-      book.appendChild(right);
+      pages.push(right);
     });
   }
 
-  const initFallback=(message)=>{
-    console.error(message);
+  // StPageFlip requiere que los elementos ya estén en el contenedor.
+  pages.forEach(p=>book.appendChild(p));
+
+  const showStaticFallback=(err)=>{
+    console.error("StPageFlip:",err);
+    pageFlip=null;
     book.classList.add("book-fallback");
-    [...book.children].forEach(el=>{
+    // La portada + páginas quedan visibles aunque falle la animación.
+    [...book.querySelectorAll(".flip-page")].forEach(el=>{
+      el.removeAttribute("style");
       el.style.display="block";
       el.style.position="relative";
       el.style.transform="none";
-      el.style.width="auto";
+      el.style.width="100%";
       el.style.height="auto";
+      el.style.minHeight="520px";
+      el.style.visibility="visible";
+      el.style.opacity="1";
     });
     $("prev").disabled=true;
     $("next").disabled=true;
@@ -396,10 +409,11 @@ function renderBook(startPage=0){
   };
 
   try{
-    if(!window.St || !window.St.PageFlip){
-      initFallback("StPageFlip no cargó.");
-      return;
+    if(typeof St==="undefined" || typeof St.PageFlip!=="function"){
+      throw new Error("La librería PageFlip no cargó.");
     }
+
+    const pageElements=book.querySelectorAll(".flip-page");
 
     pageFlip=new St.PageFlip(book,{
       width:500,
@@ -412,38 +426,38 @@ function renderBook(startPage=0){
       drawShadow:true,
       flippingTime:900,
       usePortrait:true,
-      startPage:Math.min(startPage,Math.max(0,book.children.length-1)),
+      startPage:Math.min(startPage,Math.max(0,pageElements.length-1)),
       autoSize:true,
-      maxShadowOpacity:.45,
+      maxShadowOpacity:0.45,
       showCover:true,
-      mobileScrollSupport:false,
-      swipeDistance:24,
-      clickEventForward:true,
-      useMouseEvents:true,
-      disableFlipByClick:true
+      mobileScrollSupport:true,
+      swipeDistance:30
     });
 
-    pageFlip.on("flip",e=>updateBookUI(Number(e.data)||0));
-    pageFlip.on("changeOrientation",()=>setTimeout(()=>updateBookUI(pageFlip.getCurrentPageIndex()),30));
+    pageFlip.loadFromHTML(pageElements);
 
-    const pages=[...book.querySelectorAll(".flip-page")];
-    if(!pages.length){
-      initFallback("No se generaron páginas.");
-      return;
-    }
+    pageFlip.on("flip",e=>{
+      updateBookUI(Number(e.data)||0);
+      setTimeout(bind,30);
+    });
 
-    pageFlip.loadFromHTML(pages);
+    pageFlip.on("changeOrientation",()=>{
+      setTimeout(()=>{
+        if(pageFlip)updateBookUI(pageFlip.getCurrentPageIndex());
+        bind();
+      },60);
+    });
 
     setTimeout(()=>{
-      try{
-        bind();
-        updateBookUI(pageFlip.getCurrentPageIndex());
-      }catch(err){
-        initFallback(err);
+      if(!pageFlip || pageFlip.getPageCount()<1){
+        throw new Error("PageFlip no generó páginas.");
       }
-    },120);
+      updateBookUI(pageFlip.getCurrentPageIndex());
+      bind();
+    },180);
+
   }catch(err){
-    initFallback(err);
+    showStaticFallback(err);
   }
 }
 
