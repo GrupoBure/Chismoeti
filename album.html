@@ -34,7 +34,7 @@ body{margin:0;font-family:system-ui,-apple-system,Segoe UI,Roboto,Arial,sans-ser
 .section-badge{display:inline-flex;align-items:center;gap:7px;background:#e0f2fe;border:1px solid #bae6fd;color:#0c4a6e;border-radius:999px;padding:6px 11px;font:800 13px system-ui,-apple-system,Segoe UI,Roboto,Arial,sans-serif;margin-bottom:10px}
 .stage{display:grid;grid-template-columns:44px 1fr 44px;gap:10px;align-items:center;position:relative;z-index:5}
 .arrow{width:44px;height:44px;border-radius:50%;border:1px solid #cbd5e1;background:white;color:#1e40af;font-size:24px;font-weight:900;cursor:pointer} .arrow:disabled{opacity:.35}
-.book{width:100%;height:560px;min-height:560px;display:flex;align-items:center;justify-content:center;overflow:hidden;position:relative;border-radius:14px;isolation:isolate}
+.book{width:100%;height:560px;min-height:560px;display:flex;align-items:center;justify-content:center;overflow:visible;position:relative}
 .book-fallback{display:grid!important;grid-template-columns:1fr 1fr;gap:16px;height:auto!important;min-height:0!important;overflow:visible!important}
 .book-fallback .flip-page{display:block!important;position:relative!important;transform:none!important;width:auto!important;height:auto!important;min-height:520px;visibility:visible!important;opacity:1!important}
 @media(max-width:700px){.book-fallback{grid-template-columns:1fr!important}}
@@ -55,9 +55,7 @@ body{margin:0;font-family:system-ui,-apple-system,Segoe UI,Roboto,Arial,sans-ser
 .inside-cover-copy{font:normal 14px/1.5 system-ui,-apple-system,Segoe UI,Roboto,Arial,sans-serif;color:#64748b}
 .flip-page::after{content:"";position:absolute;inset:0;pointer-events:none;box-shadow:inset 0 0 30px rgba(98,72,45,.08)}
 .photo-open{display:block;width:100%;padding:0;border:0;background:transparent;cursor:zoom-in}
-.stf__block{overflow:hidden!important}
-.stf__item{overflow:hidden!important}
-.stf__wrapper{overflow:hidden!important}
+
 .page-title{font:italic 20px Georgia,serif;color:#475569;margin-bottom:12px}
 .grid{display:grid;grid-template-columns:1fr 1fr;gap:10px}
 .mem{background:white;border:1px solid #e5e7eb;border-radius:10px;padding:7px;box-shadow:0 5px 10px rgba(15,23,42,.08);transform:rotate(var(--r,0deg));min-height:0}
