@@ -261,6 +261,16 @@ input,select,textarea{width:100%;padding:11px 12px;border:1px solid #cbd5e1;bord
   }
   .stage>.arrow{position:relative;z-index:2}
 }
+/* Papel opaco durante el giro inverso en escritorio */
+@media(min-width:701px){
+  .flip-page:not(.flip-cover){
+    background-color:#fffaf0!important;
+    background-image:none!important;
+  }
+  .stf__item{
+    background-color:#fffaf0;
+  }
+}
 </style>
 </head>
 <body>
