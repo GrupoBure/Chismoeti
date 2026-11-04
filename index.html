@@ -1250,9 +1250,29 @@ function updateAuthUI() {
     ctaTitle.textContent = "Hola, " + (ownProfile.nombre || "de nuevo") + " 👋";
     const ownCools = getCoolCount(ownProfile.id);
     ctaText.textContent = "Tu perfil ya está vinculado a tu cuenta. Puedes actualizarlo cuando quieras.";
-    sessionInfo.innerHTML =
-      "Sesión: " + (currentUser.email || "") +
-      `<div class="own-cool-note">😎 Tu perfil recibió ${ownCools} COOL${ownCools === 1 ? "" : "s"}.</div>`;
+    const note = document.createElement("div");
+    note.className = "own-cool-note";
+    note.textContent = `😎 Tu perfil recibió ${ownCools} COOL${ownCools === 1 ? "" : "s"}.`;
+    sessionInfo.append(note);
+
+    const received = coolRows.filter(row => String(row.perfil_id) === String(ownProfile.id));
+    if (received.length) {
+      const byUser = new Map(profiles.filter(p => p.user_id).map(p => [p.user_id, p]));
+      const details = document.createElement("details");
+      details.className = "own-cool-note";
+      const summary = document.createElement("summary");
+      summary.textContent = "Ver quién me dio COOL";
+      const list = document.createElement("ul");
+      for (const userId of new Set(received.map(row => row.from_user_id))) {
+        const profile = byUser.get(userId);
+        const item = document.createElement("li");
+        item.textContent = profile?.nombre || profile?.apodo || "Compañero sin perfil visible";
+        if (profile?.grupo) item.textContent += " · Grupo " + profile.grupo;
+        list.append(item);
+      }
+      details.append(summary, list);
+      sessionInfo.append(details);
+    }
     document.getElementById("addBtn").textContent = "✏️ Editar mi perfil";
   } else if (claimableProfile) {
     ctaTitle.textContent = "Encontré un perfil con tu correo 👀";
