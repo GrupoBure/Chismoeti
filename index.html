@@ -758,7 +758,7 @@ function render() {
     const inGroup = currentGroup === "Todos" || p.grupo === currentGroup;
     const hay = [
       p.nombre,p.apodo,p.grupo,p.ubicacion,p.despues_secundaria,p.trabajo,
-      p.familia,p.hobbies,p.dato_curioso,p.telefono,p.correo
+      p.familia,p.hobbies,p.dato_curioso,...(currentUser && ownProfile ? [p.telefono,p.correo] : [])
     ].join(" ").toLowerCase();
     return inGroup && hay.includes(q);
   });
@@ -1286,9 +1286,13 @@ async function claimExistingProfile() {
 async function loadProfiles() {
   loading.style.display = "block";
   grid.innerHTML = "";
+  // Los visitantes anónimos sólo solicitan campos públicos; los contactos nunca
+  // deben descargarse en su navegador. La protección real se refuerza en Supabase.
+  const { data: { session } } = await client.auth.getSession();
+  const publicColumns = "id,created_at,user_id,nombre,apodo,grupo,ubicacion,despues_secundaria,trabajo,familia,hobbies,dato_curioso,chismografo,foto_url,fotos_extra";
   const { data, error } = await client
     .from("perfiles")
-    .select("*")
+    .select(session?.user ? "*" : publicColumns)
     .order("created_at", { ascending: false });
 
   loading.style.display = "none";
@@ -1369,7 +1373,7 @@ window.openProfile = function(id) {
         <p>${esc(p.dato_curioso)}</p>
       </div>` : ""}
 
-    ${(p.telefono || p.correo) ? `
+    ${(currentUser && ownProfile && (p.telefono || p.correo)) ? `
       <div class="profile-section">
         <h4>Contacto</h4>
         <p class="contact">
@@ -1569,6 +1573,8 @@ client.auth.onAuthStateChange(async (_event, session) => {
   currentUser = session?.user || null;
   if (currentUser) closeAuth();
 
+  // Al entrar o salir, recargar perfiles para no conservar contactos en memoria.
+  await loadProfiles();
   await refreshAuthState();
   await loadCools();
   rebuildCoolState();
