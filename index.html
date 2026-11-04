@@ -1308,6 +1308,9 @@ async function loadProfiles() {
 
   await loadCools();
   await refreshAuthState();
+  if (session?.user && !ownProfile) {
+    showStatus("⚠️ La sesión está abierta, pero no encuentro un perfil vinculado a esta cuenta. Revisa el correo con el que entraste.", "error");
+  }
   if (session?.user && ownProfile) {
     const { data: contacts, error: contactError } = await client.rpc("contactos_companeros");
     if (contactError) {
@@ -1323,6 +1326,9 @@ async function loadProfiles() {
         }
       });
       ownProfile = profiles.find(p => p.user_id === session.user.id) || null;
+      if (!contacts || !Array.isArray(contacts)) {
+        showStatus("⚠️ La función privada respondió sin lista de contactos. Revisa contactos_companeros() en Supabase.", "error");
+      }
     }
   }
   rebuildCoolState();
