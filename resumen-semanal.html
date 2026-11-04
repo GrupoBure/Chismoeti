@@ -220,33 +220,39 @@ function openChismeArcade(article,post,play){
   b.onlostpointercapture=()=>keys.delete(key);
  }
  const grenade=add(controls,'button','💣 Granada','btn');
- grenade.onclick=()=>blast(aim||{x:player.x+player.face*115,y:player.y-30});
+ grenade.onclick=()=>{armed=!armed;grenadeLabel();canvas.focus()};
  const score=add(dialog,'p');score.setAttribute('role','status');
  const rows=[...article.querySelectorAll('.chat-reaction')];
  const labels=[post.titulo,...rows.map(row=>row.querySelector('.chat-bubble p').textContent)];
  let blocks,shots,particles,player,frame,last=0,aim=null,nextShot=0;
+ let grenades=[],armed=false,cursor=null,round=0;
  function restart(){
   player={x:45,y:384,v:0,ground:true,fuel:1,face:1,grenades:3};
-  shots=[];particles=[];aim=null;keys.clear();nextShot=0;
+  shots=[];particles=[];grenades=[];armed=false;cursor=null;aim=null;keys.clear();nextShot=0;
+  const lanes=[[110,255,110,255],[310,65,360,145],[205,380,80,300],[380,175,310,85]][round++%4];
   blocks=labels.flatMap((label,i)=>{
-   const y=325-i*69,x=i%2?255:110;
+   const y=325-i*69,x=lanes[i%lanes.length];
    const sticker=rows[i-1]?.querySelector('img[src]');
    const parts=label.match(/.{1,25}(?:\s|$)|\S{1,25}/g)||[label];
    return [{x,y,w:230,h:56,label:parts.slice(0,3),hp:2},...(sticker?[{x:x+237,y,w:56,h:56,img:sticker,hp:1}]:[])];
   });
-  grenade.disabled=false;grenade.textContent='💣 Granada (3)';updateScore();
+  grenadeLabel();updateScore();
  }
- function blast(to){
+ function grenadeLabel(){
+  grenade.textContent=armed?'🎯 Toca el escenario para lanzar':'💣 Granada ('+player.grenades+')';
+  grenade.disabled=!player.grenades;
+  grenade.setAttribute('aria-pressed',String(armed));
+  canvas.style.cursor=armed?'crosshair':'';
+ }
+ function throwGrenade(to){
   if(!player.grenades)return;
-  player.grenades--;
-  const reach=Math.hypot(to.x-player.x,to.y-player.y);
-  const scale=Math.min(1,245/Math.max(1,reach));
-  const x=player.x+(to.x-player.x)*scale;
-  const y=player.y+(to.y-player.y)*scale;
+  player.grenades--;armed=false;grenadeLabel();
+  const sx=player.x,sy=player.y-20;
+  grenades.push({sx,sy,x:sx,y:sy,tx:to.x,ty:to.y,t:0});
+ }
+ function blast(x,y){
   blocks=blocks.filter(b=>Math.hypot(Math.max(b.x-x,0,x-b.x-b.w),Math.max(b.y-y,0,y-b.y-b.h))>90);
   for(let i=0;i<48;i++)particles.push({x,y,dx:(Math.random()-.5)*560,dy:(Math.random()-.7)*450,life:.7});
-  grenade.textContent='💣 Granada ('+player.grenades+')';
-  grenade.disabled=!player.grenades;
   updateScore();
  }
  function updateScore(){
@@ -255,12 +261,13 @@ function openChismeArcade(article,post,play){
  function pointer(e){const b=canvas.getBoundingClientRect();return {x:(e.clientX-b.left)*720/b.width,y:(e.clientY-b.top)*420/b.height}}
  function fire(to){const a=Math.atan2(to.y-player.y+14,to.x-player.x);shots.push({x:player.x,y:player.y-14,dx:Math.cos(a)*640,dy:Math.sin(a)*640})}
  canvas.oncontextmenu=e=>e.preventDefault();
- canvas.onpointerdown=e=>{if(e.button===2){blast(pointer(e));return}if(e.button!==0)return;canvas.setPointerCapture(e.pointerId);aim=pointer(e);fire(aim);nextShot=performance.now()+160};
- canvas.onpointermove=e=>{if(aim)aim=pointer(e)};
+ canvas.onpointerdown=e=>{if(e.button===2||(e.button===0&&armed)){throwGrenade(pointer(e));return}if(e.button!==0)return;canvas.setPointerCapture(e.pointerId);aim=pointer(e);fire(aim);nextShot=performance.now()+160};
+ canvas.onpointermove=e=>{cursor=pointer(e);if(aim)aim=cursor};
+ canvas.onpointerleave=()=>{cursor=null};
  canvas.onlostpointercapture=()=>{aim=null};
  const keyHandler=e=>{if(!['ArrowLeft','ArrowRight','KeyA','KeyD','Space','ArrowUp','KeyW','KeyF','KeyG'].includes(e.code))return;
  if(e.target.tagName==='BUTTON'&&e.code==='Space')return;
- e.preventDefault();if(e.type==='keyup')keys.delete(e.code);else{keys.add(e.code);if(e.code==='KeyG'&&!e.repeat)grenade.click();if(e.code==='KeyF'&&!e.repeat)fire({x:player.x+player.face*160,y:player.y-14})}};
+ e.preventDefault();if(e.type==='keyup')keys.delete(e.code);else{keys.add(e.code);if(e.code==='KeyG'&&!e.repeat){if(cursor)throwGrenade(cursor);else grenade.click();}if(e.code==='KeyF'&&!e.repeat)fire({x:player.x+player.face*160,y:player.y-14})}};
  dialog.addEventListener('keydown',keyHandler);dialog.addEventListener('keyup',keyHandler);
  window.addEventListener('blur',clear);
  function clear(){keys.clear();aim=null}
@@ -284,6 +291,13 @@ function openChismeArcade(article,post,play){
    for(let i=0;i<12;i++)particles.push({x:s.x,y:s.y,dx:(Math.random()-.5)*310,dy:-Math.random()*280,life:.6});
    if(!b.hp){blocks.splice(blocks.indexOf(b),1);updateScore()}
   }
+  for(const g of grenades){
+   g.t=Math.min(1,g.t+dt/.62);
+   g.x=g.sx+(g.tx-g.sx)*g.t;
+   g.y=g.sy+(g.ty-g.sy)*g.t-Math.sin(Math.PI*g.t)*58;
+   if(g.t===1)blast(g.x,g.y);
+  }
+  grenades=grenades.filter(g=>g.t<1);
   shots=shots.filter(s=>!s.dead&&s.x>0&&s.x<720&&s.y>0&&s.y<420);
   const sky=ctx.createLinearGradient(0,0,0,384);
   sky.addColorStop(0,'#10162e');sky.addColorStop(1,'#3c2857');
@@ -300,6 +314,13 @@ function openChismeArcade(article,post,play){
    ctx.fillStyle=b.hp===1?'#467a75':'#28605c';ctx.fillRect(b.x,b.y,b.w,b.h);
    if(b.img?.complete&&b.img.naturalWidth)ctx.drawImage(b.img,b.x,b.y,b.w,b.h);
    else if(b.label){ctx.fillStyle='#fff';ctx.font='14px monospace';b.label.forEach((line,i)=>ctx.fillText(line.trim(),b.x+7,b.y+16+i*16,b.w-14))}
+  }
+  for(const g of grenades){
+   ctx.fillStyle='#ff934f';ctx.fillRect(g.x-7,g.y-7,14,14);
+   ctx.fillStyle='#fff1ac';ctx.fillRect(g.x+2,g.y-12,5,5);
+  }
+  if(armed&&cursor){
+   ctx.strokeStyle='#ffda73';ctx.beginPath();ctx.arc(cursor.x,cursor.y,11,0,Math.PI*2);ctx.stroke();
   }
   ctx.fillStyle='#ffda73';for(const s of shots)ctx.fillRect(s.x-3,s.y-2,7,4);
   for(const p of particles){p.x+=p.dx*dt;p.y+=p.dy*dt;p.dy+=500*dt;p.life-=dt;ctx.fillRect(p.x,p.y,4,4)}
