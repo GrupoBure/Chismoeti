@@ -23,10 +23,7 @@ main{max-width:1030px;margin:26px auto;padding:0 18px}.back{display:inline-block
 <dialog id="lightbox"><button class="btn" id="closeLightbox">Cerrar ×</button><img alt="Imagen de la semana" id="zoomed"></dialog>
 <script>
 const db=window.supabase.createClient('https://ojetnxragvscilqvdvqb.supabase.co','sb_publishable_KY1zWYr0UV_uC4s40DUQkg_Na0IDP96');
-const testDropbox=new URLSearchParams(location.search).get('prueba-dropbox')==='1';
-const api=testDropbox
- ? 'https://ojetnxragvscilqvdvqb.supabase.co/functions/v1/chismoeti-api'
- : 'https://xgwfknypmzdbuhcpmmuz.supabase.co/functions/v1/chismoeti-api';
+const api='https://ojetnxragvscilqvdvqb.supabase.co/functions/v1/chismoeti-api';
 const $=id=>document.getElementById(id);
 const make=(tag,value,cls)=>{const el=document.createElement(tag);if(value!==undefined)el.textContent=String(value);if(cls)el.className=cls;return el};
 const add=(parent,tag,text,cls)=>{const el=make(tag,text,cls);parent.append(el);return el};
@@ -183,7 +180,7 @@ async function start(){
    fecha:post.date,semana_inicio:post.week_start,titulo:post.title,categoria:post.category,
    texto:post.text,orden:post.order,photos:post.photos||[]
   })).sort((a,b)=>b.fecha.localeCompare(a.fecha)||a.orden-b.orden);
-  status((testDropbox?'Prueba del Dropbox de Chismoeti · ':'')+'✅ Acceso exclusivo para compañeros registrados · '+posts.length+' entradas publicadas.');
+  status('✅ Acceso exclusivo para compañeros registrados · '+posts.length+' entradas publicadas.');
   if(!posts.length){add($('issues'),'p','Todavía no hay entradas en el blog.');$('issues').hidden=false}
   else render();
 
