@@ -47,8 +47,9 @@ async function mediaUrl(file){
 }
 function showImage(url){$('zoomed').src=url;$('lightbox').showModal()}
 $('closeLightbox').onclick=()=>$('lightbox').close();
-async function render(){
+function render(){
  const root=$('issues');root.replaceChildren();
+ const photos=[];
  const grouped=new Map();
  for(const post of posts){if(!grouped.has(post.semana_inicio))grouped.set(post.semana_inicio,[]);grouped.get(post.semana_inicio).push(post)}
  for(const [week,articles] of grouped){
@@ -67,9 +68,8 @@ async function render(){
    if(imgs.length){
     const gallery=make('div');gallery.className='gallery';gallery.style.marginTop='15px';
     for(const pic of imgs){
-      const url=await mediaUrl(pic.file);
       const fig=make('figure');fig.className='figure';
-      const img=make('img');img.loading='lazy';img.src=url;img.alt=pic.caption||'Imagen del grupo';img.onclick=()=>showImage(url);
+      const img=make('img');img.loading='lazy';img.alt=pic.caption||'Imagen del grupo';photos.push({img,file:pic.file});
       fig.append(img);add(fig,'figcaption',pic.caption||'Foto del grupo');gallery.append(fig);
     }
     article.append(gallery);
@@ -79,6 +79,23 @@ async function render(){
   root.append(group);
  }
  root.hidden=false;
+ for(let i=0;i<Math.min(4,photos.length);i++) void loadPhotos(photos);
+}
+async function loadPhotos(photos){
+ while(photos.length){
+  const {img,file}=photos.shift();
+  if(!img.isConnected)return;
+  try{
+   const url=await mediaUrl(file);
+   img.src=url;
+   img.onclick=()=>showImage(url);
+  }catch{
+   const unavailable=make('p');
+   unavailable.className='media-empty';
+   unavailable.textContent='Foto no disponible';
+   img.replaceWith(unavailable);
+  }
+ }
 }
 async function start(){
  $('guest').hidden=true;$('issues').hidden=true;status('🔒 Comprobando tu sesión…');
@@ -95,7 +112,7 @@ async function start(){
   })).sort((a,b)=>b.fecha.localeCompare(a.fecha)||a.orden-b.orden);
   status('✅ Acceso exclusivo para compañeros registrados · '+posts.length+' entradas publicadas.');
   if(!posts.length){add($('issues'),'p','Todavía no hay entradas en el blog.');$('issues').hidden=false}
-  else await render();
+  else render();
 
  }catch(err){status('⚠️ Error al cargar el blog: '+(err?.message||err));console.error(err)}
 }
