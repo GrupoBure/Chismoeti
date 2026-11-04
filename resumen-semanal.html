@@ -1,7 +1,7 @@
 <!doctype html>
 <html lang="es"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
 <title>El Chismoeti Semanal · E-6</title><link rel="icon" href="./favicon.png">
-<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>\n<script src="https://cdn.jsdelivr.net/npm/jszip@3.10.1/dist/jszip.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <style>
 :root{--ink:#172e43;--teal:#0b766b;--paper:#fffdf7;--line:#d7e0e8;--blue:#2563eb}
 *{box-sizing:border-box}body{margin:0;background:linear-gradient(#e7f0fd,#eaf0f6 280px);color:var(--ink);font-family:system-ui,-apple-system,Segoe UI,Arial,sans-serif}
@@ -22,28 +22,33 @@ main{max-width:1030px;margin:26px auto;padding:0 18px}.back{display:inline-block
 <dialog id="lightbox"><button class="btn" id="closeLightbox">Cerrar ×</button><img alt="Imagen de la semana" id="zoomed"></dialog>
 <script>
 const db=window.supabase.createClient('https://ojetnxragvscilqvdvqb.supabase.co','sb_publishable_KY1zWYr0UV_uC4s40DUQkg_Na0IDP96');
+const api='https://ojetnxragvscilqvdvqb.supabase.co/functions/v1/chismoeti-api';
 const $=id=>document.getElementById(id);
 const make=(tag,value,cls)=>{const el=document.createElement(tag);if(value!==undefined)el.textContent=String(value);if(cls)el.className=cls;return el};
 const add=(parent,tag,text,cls)=>{const el=make(tag,text,cls);parent.append(el);return el};
 let posts=[];
+const mediaCache=new Map();
 function status(msg){$('status').textContent=msg}
 function guest(msg){status(msg);$('guest').hidden=false}
-const storage='chismoeti_semanal';
-
-
 const dateFmt=d=>{const [y,m,day]=d.split('-');return day+'/'+m+'/'+y};
-async function signedUrl(path){
- const {data,error}=await db.storage.from(storage).createSignedUrl(path,3600);
- return error?null:data?.signedUrl;
+async function callApi(op,params={}){
+ const {data:{session}}=await db.auth.getSession();
+ if(!session?.access_token)throw new Error('Tu sesión terminó. Vuelve a entrar a Chismoeti.');
+ const url=new URL(api);url.searchParams.set('op',op);
+ for(const [key,value] of Object.entries(params))url.searchParams.set(key,value);
+ const response=await fetch(url,{headers:{Authorization:'Bearer '+session.access_token}});
+ if(!response.ok){const problem=await response.json().catch(()=>({}));throw new Error(problem.error||'No pude abrir el contenido privado del blog.');}
+ return response;
+}
+async function mediaUrl(file){
+ if(mediaCache.has(file))return mediaCache.get(file);
+ const response=await callApi('media',{file});
+ const url=URL.createObjectURL(await response.blob());mediaCache.set(file,url);return url;
 }
 function showImage(url){$('zoomed').src=url;$('lightbox').showModal()}
 $('closeLightbox').onclick=()=>$('lightbox').close();
 async function render(){
  const root=$('issues');root.replaceChildren();
- const {data:media,error:mediaError}=await db.from('chismoeti_blog_imagenes').select('post_id,ruta,pie');
- if(mediaError) console.error('Galería:',mediaError);
- const mediaByPost=new Map();
- for(const pic of (media||[])){if(!mediaByPost.has(pic.post_id))mediaByPost.set(pic.post_id,[]);mediaByPost.get(pic.post_id).push(pic)}
  const grouped=new Map();
  for(const post of posts){if(!grouped.has(post.semana_inicio))grouped.set(post.semana_inicio,[]);grouped.get(post.semana_inicio).push(post)}
  for(const [week,articles] of grouped){
@@ -58,14 +63,14 @@ async function render(){
    const title=add(article,'h3',post.titulo);title.style.fontSize='clamp(21px,3.4vw,29px)';title.style.fontFamily='Georgia,serif';
    article.insertBefore(head,title);
    add(article,'p',post.texto);
-   const imgs=mediaByPost.get(post.id)||[];
+   const imgs=post.photos||[];
    if(imgs.length){
     const gallery=make('div');gallery.className='gallery';gallery.style.marginTop='15px';
     for(const pic of imgs){
-      const url=await signedUrl(pic.ruta);if(!url)continue;
+      const url=await mediaUrl(pic.file);
       const fig=make('figure');fig.className='figure';
-      const img=make('img');img.loading='lazy';img.src=url;img.alt=pic.pie||'Imagen del grupo';img.onclick=()=>showImage(url);
-      fig.append(img);add(fig,'figcaption',pic.pie||'Foto del grupo');gallery.append(fig);
+      const img=make('img');img.loading='lazy';img.src=url;img.alt=pic.caption||'Imagen del grupo';img.onclick=()=>showImage(url);
+      fig.append(img);add(fig,'figcaption',pic.caption||'Foto del grupo');gallery.append(fig);
     }
     article.append(gallery);
    }
@@ -83,9 +88,11 @@ async function start(){
   const {data:profile,error:profileErr}=await db.from('perfiles').select('id').eq('user_id',user.id).maybeSingle();
   if(profileErr){status('No pude comprobar tu perfil: '+profileErr.message);return}
   if(!profile){guest('🔒 Necesitas tener un perfil vinculado para entrar al blog.');return}
-  const {data,error}=await db.from('chismoeti_blog_posts').select('id,fecha,semana_inicio,titulo,categoria,texto,orden').eq('publicado',true).order('fecha',{ascending:false}).order('orden',{ascending:true});
-  if(error){status((error.code==='PGRST205'||error.code==='42P01')?'✅ Sesión autorizada. Falta instalar el nuevo SQL del blog en Supabase.':'⚠️ No pude cargar el blog: '+error.message);return}
-  posts=data||[];
+  const manifest=await (await callApi('manifest')).json();
+  posts=(manifest.posts||[]).map(post=>({
+   fecha:post.date,semana_inicio:post.week_start,titulo:post.title,categoria:post.category,
+   texto:post.text,orden:post.order,photos:post.photos||[]
+  })).sort((a,b)=>b.fecha.localeCompare(a.fecha)||a.orden-b.orden);
   status('✅ Acceso exclusivo para compañeros registrados · '+posts.length+' entradas publicadas.');
   if(!posts.length){add($('issues'),'p','Todavía no hay entradas en el blog.');$('issues').hidden=false}
   else await render();
