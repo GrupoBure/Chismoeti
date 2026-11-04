@@ -11,6 +11,7 @@ main{max-width:1030px;margin:26px auto;padding:0 18px}.back{display:inline-block
 .admin{border:1px solid #b2dbcb;background:#f1faf6;padding:18px;border-radius:14px;margin-top:28px}.admin label{font-weight:750;display:block;margin:12px 0}.admin input{width:100%;padding:9px;border:1px solid #b3c5d4;border-radius:8px}.upload-log{font-size:13px;white-space:pre-wrap;line-height:1.5}.footer{margin:24px 0 4px;border-top:1px solid var(--line);padding-top:14px;font-size:12px;color:#718096}dialog{border:0;border-radius:16px;padding:12px;max-width:min(96vw,900px);box-shadow:0 22px 60px #0005}dialog::backdrop{background:#0b1525bd}dialog img{max-width:90vw;max-height:80vh;display:block;object-fit:contain}dialog button{float:right;margin:0 0 8px}
 [hidden]{display:none!important}@media(max-width:680px){main{margin:0;padding:0}.paper{border-radius:0;padding:18px}.stats{grid-template-columns:repeat(2,1fr)}.columns{grid-template-columns:1fr}.gallery{grid-template-columns:repeat(2,1fr)}.figure img{height:145px}}
 .blog-week,.blog-day{border:1px solid var(--line);border-radius:12px;padding:12px;margin-top:12px}.blog-week>summary,.blog-day>summary{cursor:pointer;font-weight:800;color:var(--teal)}.blog-week>summary{font-size:1.15rem}.blog-post>p{white-space:pre-line}
+.sticker-reactions{display:flex;flex-wrap:wrap;align-items:center;gap:10px;margin:10px 0 14px}.sticker-reactions img{display:block;width:66px;height:66px;object-fit:contain}.sticker-reactions img:not([src]){display:none}
 </style></head><body>
 <main><a class="back" href="./index.html">← Volver a Chismoeti</a><div class="paper">
 <header class="masthead"><div class="eyebrow">Generación E-6 · 1997–2000 · Solo registrados</div><h1>El blog del Chismoeti 📰</h1><p class="muted">Una semana, varios chismes. Lo que pasó de verdad, contado como hablamos nosotros. 😂</p></header>
@@ -139,7 +140,21 @@ function renderPost(post,photos){
    const title=add(article,'h3',post.titulo);title.style.fontSize='clamp(21px,3.4vw,29px)';title.style.fontFamily='Georgia,serif';
    article.insertBefore(head,title);
    add(article,'p',post.texto);
-   const imgs=post.photos||[];
+   const media=post.photos||[];
+   const isSticker=pic=>/^STK-.*\.webp$/i.test(pic.file);
+   const stickers=media.filter(isSticker);
+   if(stickers.length){
+    const reactions=make('div');reactions.className='sticker-reactions';
+    reactions.setAttribute('aria-label','Reacciones del blog');
+    for(const sticker of stickers){
+     const img=make('img');
+     img.alt=sticker.caption||'Sticker de reacción';
+     reactions.append(img);
+     photos.push({img,file:sticker.file,reaction:true});
+    }
+    article.append(reactions);
+   }
+   const imgs=media.filter(pic=>!isSticker(pic));
    if(imgs.length){
     const gallery=make('div');gallery.className='gallery';gallery.style.marginTop='15px';
     for(const pic of imgs){
@@ -153,13 +168,14 @@ function renderPost(post,photos){
 }
 async function loadPhotos(photos){
  while(photos.length){
-  const {img,file}=photos.shift();
+  const {img,file,reaction}=photos.shift();
   if(!img.isConnected)return;
   try{
    const url=await mediaUrl(file);
    img.src=url;
-   img.onclick=()=>showImage(url);
+   if(!reaction)img.onclick=()=>showImage(url);
   }catch{
+   if(reaction){img.remove();continue;}
    const unavailable=make('p');
    unavailable.className='media-empty';
    unavailable.textContent='Foto no disponible';
