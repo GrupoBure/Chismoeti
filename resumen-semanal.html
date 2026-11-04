@@ -203,7 +203,10 @@ function openChismeArcade(article,post,play){
  const bar=add(dialog,'div',undefined,'arcade-bar');
  add(bar,'strong','💥 Revienta el chisme');
  const reset=add(bar,'button','Otra ronda','btn');
- const close=add(bar,'button','Salir','btn');
+ const close=add(bar,'button','Salir ×','btn');
+ close.type='button';
+ close.onclick=()=>dialog.close();
+ dialog.setAttribute('aria-label','Revienta el chisme');
  const status=add(dialog,'p','A/D o flechas · Espacio para saltar, mantén para volar · Clic o toque para disparar');
  const canvas=add(dialog,'canvas');canvas.width=720;canvas.height=420;
  canvas.style.cssText='width:100%;display:block;touch-action:none;border-radius:10px';
@@ -216,12 +219,14 @@ function openChismeArcade(article,post,play){
   b.onpointerdown=e=>{b.setPointerCapture(e.pointerId);keys.add(key)};
   b.onlostpointercapture=()=>keys.delete(key);
  }
+ const grenade=add(controls,'button','💣 Granada','btn');
+ grenade.onclick=()=>blast(aim||{x:player.x+player.face*115,y:player.y-30});
  const score=add(dialog,'p');score.setAttribute('role','status');
  const rows=[...article.querySelectorAll('.chat-reaction')];
  const labels=[post.titulo,...rows.map(row=>row.querySelector('.chat-bubble p').textContent)];
  let blocks,shots,particles,player,frame,last=0,aim=null,nextShot=0;
  function restart(){
-  player={x:45,y:384,v:0,ground:true,fuel:1,face:1};
+  player={x:45,y:384,v:0,ground:true,fuel:1,face:1,grenades:3};
   shots=[];particles=[];aim=null;keys.clear();nextShot=0;
   blocks=labels.flatMap((label,i)=>{
    const y=325-i*69,x=i%2?255:110;
@@ -229,16 +234,33 @@ function openChismeArcade(article,post,play){
    const parts=label.match(/.{1,25}(?:\s|$)|\S{1,25}/g)||[label];
    return [{x,y,w:230,h:56,label:parts.slice(0,3),hp:2},...(sticker?[{x:x+237,y,w:56,h:56,img:sticker,hp:1}]:[])];
   });
-  score.textContent='Piezas en pie: '+blocks.length;
+  grenade.disabled=false;grenade.textContent='💣 Granada (3)';updateScore();
+ }
+ function blast(to){
+  if(!player.grenades)return;
+  player.grenades--;
+  const reach=Math.hypot(to.x-player.x,to.y-player.y);
+  const scale=Math.min(1,245/Math.max(1,reach));
+  const x=player.x+(to.x-player.x)*scale;
+  const y=player.y+(to.y-player.y)*scale;
+  blocks=blocks.filter(b=>Math.hypot(Math.max(b.x-x,0,x-b.x-b.w),Math.max(b.y-y,0,y-b.y-b.h))>90);
+  for(let i=0;i<48;i++)particles.push({x,y,dx:(Math.random()-.5)*560,dy:(Math.random()-.7)*450,life:.7});
+  grenade.textContent='💣 Granada ('+player.grenades+')';
+  grenade.disabled=!player.grenades;
+  updateScore();
+ }
+ function updateScore(){
+  score.textContent=blocks.length?'Piezas en pie: '+blocks.length:'🏆 ¡El Gran Carnal quedó hecho confeti!';
  }
  function pointer(e){const b=canvas.getBoundingClientRect();return {x:(e.clientX-b.left)*720/b.width,y:(e.clientY-b.top)*420/b.height}}
  function fire(to){const a=Math.atan2(to.y-player.y+14,to.x-player.x);shots.push({x:player.x,y:player.y-14,dx:Math.cos(a)*640,dy:Math.sin(a)*640})}
- canvas.onpointerdown=e=>{canvas.setPointerCapture(e.pointerId);aim=pointer(e);fire(aim);nextShot=performance.now()+160};
+ canvas.oncontextmenu=e=>e.preventDefault();
+ canvas.onpointerdown=e=>{if(e.button===2){blast(pointer(e));return}if(e.button!==0)return;canvas.setPointerCapture(e.pointerId);aim=pointer(e);fire(aim);nextShot=performance.now()+160};
  canvas.onpointermove=e=>{if(aim)aim=pointer(e)};
  canvas.onlostpointercapture=()=>{aim=null};
- const keyHandler=e=>{if(!['ArrowLeft','ArrowRight','KeyA','KeyD','Space','ArrowUp','KeyW','KeyF'].includes(e.code))return;
+ const keyHandler=e=>{if(!['ArrowLeft','ArrowRight','KeyA','KeyD','Space','ArrowUp','KeyW','KeyF','KeyG'].includes(e.code))return;
  if(e.target.tagName==='BUTTON'&&e.code==='Space')return;
- e.preventDefault();if(e.type==='keyup')keys.delete(e.code);else{keys.add(e.code);if(e.code==='KeyF'&&!e.repeat)fire({x:player.x+player.face*160,y:player.y-14})}};
+ e.preventDefault();if(e.type==='keyup')keys.delete(e.code);else{keys.add(e.code);if(e.code==='KeyG'&&!e.repeat)grenade.click();if(e.code==='KeyF'&&!e.repeat)fire({x:player.x+player.face*160,y:player.y-14})}};
  dialog.addEventListener('keydown',keyHandler);dialog.addEventListener('keyup',keyHandler);
  window.addEventListener('blur',clear);
  function clear(){keys.clear();aim=null}
@@ -260,10 +282,19 @@ function openChismeArcade(article,post,play){
    if(!b)continue;
    s.dead=true;b.hp--;
    for(let i=0;i<12;i++)particles.push({x:s.x,y:s.y,dx:(Math.random()-.5)*310,dy:-Math.random()*280,life:.6});
-   if(!b.hp){blocks.splice(blocks.indexOf(b),1);score.textContent=blocks.length?'Piezas en pie: '+blocks.length:'🏆 ¡El Gran Carnal quedó hecho confeti!'}
+   if(!b.hp){blocks.splice(blocks.indexOf(b),1);updateScore()}
   }
   shots=shots.filter(s=>!s.dead&&s.x>0&&s.x<720&&s.y>0&&s.y<420);
-  ctx.fillStyle='#121d34';ctx.fillRect(0,0,720,420);
+  const sky=ctx.createLinearGradient(0,0,0,384);
+  sky.addColorStop(0,'#10162e');sky.addColorStop(1,'#3c2857');
+  ctx.fillStyle=sky;ctx.fillRect(0,0,720,420);
+  ctx.fillStyle='#b6afd3';
+  for(let i=0;i<45;i++)ctx.fillRect((i*137)%720,(i*53)%280,2,2);
+  ctx.fillStyle='#1c213b';
+  for(let i=0;i<22;i++){const height=28+(i*41)%83;ctx.fillRect(i*34,384-height,30,height);}
+  if(jump&&!player.ground&&player.fuel>0){
+   ctx.fillStyle='#ff923e';ctx.fillRect(player.x-5,player.y-10,10,12+Math.sin(now/28)*5);
+  }
   ctx.fillStyle='#31436b';for(let x=0;x<720;x+=34)ctx.fillRect(x,384,32,36);
   for(const b of blocks){
    ctx.fillStyle=b.hp===1?'#467a75':'#28605c';ctx.fillRect(b.x,b.y,b.w,b.h);
@@ -281,7 +312,7 @@ function openChismeArcade(article,post,play){
  }
  reset.onclick=()=>{restart();canvas.focus()};
  canvas.tabIndex=0;
- status.append(' · F para disparar con teclado');
+ status.append(' · F dispara · G o clic derecho lanza granada · Esc sale');
  dialog.addEventListener('close',()=>{cancelAnimationFrame(frame);window.removeEventListener('blur',clear);dialog.remove();if(play.isConnected)play.focus()},{once:true});
  document.body.append(dialog);restart();dialog.showModal();canvas.focus();last=performance.now();frame=requestAnimationFrame(tick);
 }
