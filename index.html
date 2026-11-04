@@ -1292,7 +1292,7 @@ async function loadProfiles() {
   const publicColumns = "id,created_at,user_id,nombre,apodo,grupo,ubicacion,despues_secundaria,trabajo,familia,hobbies,dato_curioso,chismografo,foto_url,fotos_extra";
   const { data, error } = await client
     .from("perfiles")
-    .select(session?.user ? "*" : publicColumns)
+    .select(publicColumns)
     .order("created_at", { ascending: false });
 
   loading.style.display = "none";
