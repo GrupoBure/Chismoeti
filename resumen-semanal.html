@@ -77,13 +77,19 @@ function render(){
  const grouped=new Map();
  for(const post of posts){if(!grouped.has(post.semana_inicio))grouped.set(post.semana_inicio,[]);grouped.get(post.semana_inicio).push(post)}
  for(const [week,articles] of grouped){
-  const group=make('details');group.className='blog-week';
+  const group=make('section');group.className='blog-week';
   const days=new Map();
   for(const post of articles){
    if(!days.has(post.fecha))days.set(post.fecha,[]);
    days.get(post.fecha).push(post);
   }
-  add(group,'summary','Semana del '+dateFmt(week)+' · '+days.size+(days.size===1?' día':' días'));
+  add(group,'h2','Semana del '+dateFmt(week),'section-title');
+  const overview=articles.map(({texto})=>{
+   const firstParagraph=texto.split(/\n\s*\n/,1)[0];
+   return firstParagraph.match(/^.*?[.!?](?=\s|$)/)?.[0]||firstParagraph;
+  }).join(' ');
+  add(group,'p',overview);
+  add(group,'h3','Detalles por día');
   for(const [date,entries] of days){
    const day=make('details');day.className='blog-day';
    const weekday=new Date(date+'T12:00:00Z').toLocaleDateString('es-MX',{weekday:'long',timeZone:'UTC'});
