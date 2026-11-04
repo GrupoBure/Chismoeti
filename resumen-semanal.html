@@ -16,18 +16,7 @@ main{max-width:1030px;margin:26px auto;padding:0 18px}.back{display:inline-block
 <div id="status" class="notice" role="status">🔒 Comprobando tu sesión y tu perfil…</div>
 <div id="guest" hidden><p>Para leer los resúmenes necesitas entrar con tu correo y tener un perfil vinculado en Chismoeti.</p><a class="btn" href="./index.html">Entrar a Chismoeti</a></div>
 <div id="issues" hidden></div>
-<section id="admin" class="admin" hidden>
-<h2>📤 Fotos para el blog</h2><p>Elige la entrada a la que pertenecen las fotos y súbelas. Se guardan en almacenamiento <strong>privado</strong>, no en GitHub.</p><label for="postSelect">Entrada del blog</label><select id="postSelect" style="width:100%;padding:11px;border-radius:9px;border:1px solid #b3c5d4"></select>
-<label for="files">Imágenes JPG, PNG o WebP</label><input id="files" type="file" accept="image/jpeg,image/png,image/webp" multiple>
-<p><button class="btn" id="uploadBtn">Subir imágenes privadas</button></p>
-<div id="uploadStatus" class="upload-log" role="status"></div><hr style="border:0;border-top:1px solid #c9ded5;margin:22px 0">
-<h3>🧠 Importar automáticamente desde el ZIP de WhatsApp</h3>
-<p class="muted">Selecciona el ZIP completo una sola vez. Chismoeti tomará únicamente las fotos que ya seleccionamos para el blog, las colocará en su entrada correcta y guardará como contexto los mensajes cercanos a cada foto.</p>
-<label for="zipFile">ZIP exportado de WhatsApp</label>
-<input id="zipFile" type="file" accept=".zip,application/zip">
-<p><button class="btn" id="importZipBtn">Importar fotos seleccionadas y contexto</button></p>
-<div id="zipStatus" class="upload-log" role="status"></div>
-</section>
+
 <footer class="footer">El blog del Chismoeti · Solo perfiles vinculados · El chat original no se publica.</footer>
 </div></main>
 <dialog id="lightbox"><button class="btn" id="closeLightbox">Cerrar ×</button><img alt="Imagen de la semana" id="zoomed"></dialog>
@@ -36,39 +25,11 @@ const db=window.supabase.createClient('https://ojetnxragvscilqvdvqb.supabase.co'
 const $=id=>document.getElementById(id);
 const make=(tag,value,cls)=>{const el=document.createElement(tag);if(value!==undefined)el.textContent=String(value);if(cls)el.className=cls;return el};
 const add=(parent,tag,text,cls)=>{const el=make(tag,text,cls);parent.append(el);return el};
-let isAdmin=false, posts=[];
+let posts=[];
 function status(msg){$('status').textContent=msg}
 function guest(msg){status(msg);$('guest').hidden=false}
-const storage='chismoeti_semanal';\nconst AUTO_MEDIA = [
-  {file:'IMG-20261013-WA0007.jpg',post:'El regreso de los que juraban no volver a saber de la secu'},
-  {file:'IMG-20261007-WA0037.jpg',post:'El regreso de los que juraban no volver a saber de la secu'},
-  {file:'IMG-20261008-WA0028.jpg',post:'El expediente secreto de los talleres (y la memoria que ya no coopera)'},
-  {file:'IMG-20261008-WA0029.jpg',post:'El expediente secreto de los talleres (y la memoria que ya no coopera)'},
-  {file:'IMG-20251026-WA0002.jpg',post:'El expediente secreto de los talleres (y la memoria que ya no coopera)'},
-  {file:'IMG-20261021-WA0016.jpg',post:'¿A qué se dedica la banda? Se abrió la bolsa de trabajo del chisme'},
-  {file:'IMG-20261021-WA0019.jpg',post:'¿A qué se dedica la banda? Se abrió la bolsa de trabajo del chisme'},
-  {file:'IMG-20261021-WA0044.jpg',post:'El día que WhatsApp casi pidió vacaciones'},
-  {file:'IMG-20261022-WA0012.jpg',post:'El día que WhatsApp casi pidió vacaciones'},
-  {file:'IMG-20261022-WA0062.jpg',post:'El día que WhatsApp casi pidió vacaciones'},
-  {file:'IMG-20261027-WA0075.jpg',post:'Cine, ofrendas y recuerdos de los que ya no están'},
-  {file:'IMG-20261027-WA0078.jpg',post:'Cine, ofrendas y recuerdos de los que ya no están'},
-  {file:'IMG-20261029-WA0016.jpg',post:'Cine, ofrendas y recuerdos de los que ya no están'},
-  {file:'IMG-20261029-WA0511.jpg',post:'Un café, tantitos mensajes… ¡y ya van treinta y cinco!'},
-  {file:'IMG-20261029-WA0532.jpg',post:'Un café, tantitos mensajes… ¡y ya van treinta y cinco!'},
-  {file:'IMG-20261030-WA0017.jpg',post:'Cine, ofrendas y recuerdos de los que ya no están'},
-  {file:'IMG-20261030-WA0035.jpg',post:'Cine, ofrendas y recuerdos de los que ya no están'},
-  {file:'IMG-20261030-WA0036.jpg',post:'Cine, ofrendas y recuerdos de los que ya no están'},
-  {file:'IMG-20261101-WA0041.jpg',post:'Cine, ofrendas y recuerdos de los que ya no están'},
-  {file:'IMG-20261101-WA0039.jpg',post:'Cine, ofrendas y recuerdos de los que ya no están'},
-  {file:'IMG-20261101-WA0037.jpg',post:'Cine, ofrendas y recuerdos de los que ya no están'},
-  {file:'IMG-20261101-WA0043.jpg',post:'Cine, ofrendas y recuerdos de los que ya no están'},
-  {file:'IMG-20261102-WA0088.jpg',post:'El admin ya tuvo reencuentros… ¿y apenas nos enteramos?'},
-  {file:'IMG-20261102-WA0087.jpg',post:'El admin ya tuvo reencuentros… ¿y apenas nos enteramos?'},
-  {file:'IMG-20261103-WA0015.jpg',post:'Antes y después: las fotos que nos van a exhibir a todos'},
-  {file:'IMG-20261103-WA0070.jpg',post:'Antes y después: las fotos que nos van a exhibir a todos'},
-  {file:'IMG-20261103-WA0069.jpg',post:'Antes y después: las fotos que nos van a exhibir a todos'},
-  {file:'IMG-20261103-WA0071.jpg',post:'Antes y después: las fotos que nos van a exhibir a todos'}
-];
+const storage='chismoeti_semanal';
+
 
 const dateFmt=d=>{const [y,m,day]=d.split('-');return day+'/'+m+'/'+y};
 async function signedUrl(path){
@@ -115,105 +76,22 @@ async function render(){
  root.hidden=false;
 }
 async function start(){
- $('guest').hidden=true;$('issues').hidden=true;$('admin').hidden=true;status('🔒 Comprobando tu sesión…');
+ $('guest').hidden=true;$('issues').hidden=true;status('🔒 Comprobando tu sesión…');
  try{
   const {data:{user},error:authErr}=await db.auth.getUser();
   if(authErr||!user){guest('🔒 Para leer el blog necesitas iniciar sesión en Chismoeti.');return}
   const {data:profile,error:profileErr}=await db.from('perfiles').select('id').eq('user_id',user.id).maybeSingle();
   if(profileErr){status('No pude comprobar tu perfil: '+profileErr.message);return}
   if(!profile){guest('🔒 Necesitas tener un perfil vinculado para entrar al blog.');return}
-  const {data:ad,error:adErr}=await db.from('admins').select('user_id').eq('user_id',user.id).maybeSingle();
-  isAdmin=!adErr&&!!ad;
   const {data,error}=await db.from('chismoeti_blog_posts').select('id,fecha,semana_inicio,titulo,categoria,texto,orden').eq('publicado',true).order('fecha',{ascending:false}).order('orden',{ascending:true});
   if(error){status((error.code==='PGRST205'||error.code==='42P01')?'✅ Sesión autorizada. Falta instalar el nuevo SQL del blog en Supabase.':'⚠️ No pude cargar el blog: '+error.message);return}
   posts=data||[];
   status('✅ Acceso exclusivo para compañeros registrados · '+posts.length+' entradas publicadas.');
   if(!posts.length){add($('issues'),'p','Todavía no hay entradas en el blog.');$('issues').hidden=false}
   else await render();
-  if(isAdmin){
-   const select=$('postSelect');select.replaceChildren();
-   for(const post of posts){const option=make('option',dateFmt(post.fecha)+' · '+post.titulo);option.value=post.id;select.append(option)}
-   $('admin').hidden=false;
-  }
+
  }catch(err){status('⚠️ Error al cargar el blog: '+(err?.message||err));console.error(err)}
 }
-$('uploadBtn').onclick=async()=>{
- if(!isAdmin||!$('postSelect').value)return;
- const files=Array.from($('files').files||[]);if(!files.length){$('uploadStatus').textContent='Selecciona una imagen.';return}
- $('uploadBtn').disabled=true;
- const log=[];
- for(const file of files){
-  if(!['image/jpeg','image/png','image/webp'].includes(file.type)||file.size>10*1024*1024){log.push('⚠️ '+file.name+': formato inválido o más de 10 MB');continue}
-  const postId=$('postSelect').value;
-  const clean=file.name.replace(/[^a-zA-Z0-9._-]/g,'_');
-  const path='blog/'+postId+'/'+Date.now()+'-'+clean;
-  const uploaded=await db.storage.from(storage).upload(path,file,{upsert:false,contentType:file.type});
-  if(uploaded.error){log.push('❌ '+file.name+': '+uploaded.error.message);continue}
-  const saved=await db.from('chismoeti_blog_imagenes').insert({post_id:postId,ruta:path,pie:file.name});
-  if(saved.error){log.push('⚠️ Foto almacenada, pero no vinculada: '+saved.error.message)}
-  else log.push('✅ '+file.name);
-  $('uploadStatus').textContent=log.join('\n');
- }
- $('uploadBtn').disabled=false;
- if(log.some(x=>x.startsWith('✅')))await start();
-};
-function cleanChatText(s=''){
- return String(s).replace(/[\u200e\u200f]/g,'').replace(/\s+/g,' ').trim();
-}
-function contextForFile(chatText,file){
- const lines=chatText.split(/\r?\n/);
- const idx=lines.findIndex(line=>line.includes(file));
- if(idx<0)return 'Imagen compartida en el grupo.';
- const line=cleanChatText(lines[idx]);
- const m=line.match(/^(\d{2}\/\d{2}\/\d{2})\s+([^\-]+)-\s+([^:]+):\s*(.*)$/);
- let base=m?('📸 '+m[3].trim()+' · '+m[1]+(m[4]?('\n'+m[4].replace(file+' (archivo adjunto)','').trim()):'')):'📸 Imagen compartida en el chat';
- const nearby=[];
- for(let d=1;d<=4 && nearby.length<2;d++){
-   const candidate=cleanChatText(lines[idx+d]||'');
-   if(!candidate||candidate.includes('(archivo adjunto)'))continue;
-   const cm=candidate.match(/^\d{2}\/\d{2}\/\d{2}\s+[^\-]+-\s+([^:]+):\s*(.+)$/);
-   if(cm && cm[2].length<240)nearby.push('💬 '+cm[1].trim()+': “'+cm[2].trim()+'”');
- }
- return (base+(nearby.length?'\n'+nearby.join('\n'):'')).slice(0,650);
-}
-$('importZipBtn').onclick=async()=>{
- if(!isAdmin){$('zipStatus').textContent='Sólo el administrador puede importar el ZIP.';return}
- const file=$('zipFile').files?.[0];
- if(!file){$('zipStatus').textContent='Selecciona el ZIP exportado de WhatsApp.';return}
- $('importZipBtn').disabled=true;$('zipStatus').textContent='Abriendo ZIP y cruzando fotos con las entradas…';
- try{
-   const zip=await JSZip.loadAsync(file);
-   const txtEntry=Object.values(zip.files).find(z=>/Chat de WhatsApp.*\.txt$/i.test(z.name));
-   if(!txtEntry)throw new Error('No encontré el TXT del chat dentro del ZIP.');
-   const chatText=await txtEntry.async('string');
-   const {data:existing,error:existingError}=await db.from('chismoeti_blog_imagenes').select('ruta');
-   if(existingError)throw existingError;
-   const existingRoutes=new Set((existing||[]).map(x=>x.ruta));
-   const postByTitle=new Map(posts.map(p=>[p.titulo,p]));
-   let uploaded=0,skipped=0,missing=0,failed=0;
-   const logs=[];
-   for(const item of AUTO_MEDIA){
-     const post=postByTitle.get(item.post);
-     if(!post){failed++;logs.push('❌ No encontré entrada: '+item.post);continue}
-     const z=zip.file(item.file) || Object.values(zip.files).find(x=>x.name.endsWith('/'+item.file));
-     if(!z){missing++;logs.push('⚠️ No está en el ZIP: '+item.file);continue}
-     const route='blog/'+post.id+'/'+item.file;
-     if(existingRoutes.has(route)){skipped++;continue}
-     const blob=await z.async('blob');
-     const type=item.file.toLowerCase().endsWith('.png')?'image/png':item.file.toLowerCase().endsWith('.webp')?'image/webp':'image/jpeg';
-     const up=await db.storage.from(storage).upload(route,blob,{upsert:false,contentType:type});
-     if(up.error){failed++;logs.push('❌ '+item.file+': '+up.error.message);continue}
-     const pie=contextForFile(chatText,item.file);
-     const saved=await db.from('chismoeti_blog_imagenes').insert({post_id:post.id,ruta:route,pie});
-     if(saved.error){failed++;logs.push('⚠️ '+item.file+' subida, pero sin contexto: '+saved.error.message);continue}
-     uploaded++;logs.push('✅ '+item.file);
-   }
-   $('zipStatus').textContent='Listo: '+uploaded+' subidas · '+skipped+' ya estaban · '+missing+' no encontradas · '+failed+' con error.\n'+logs.slice(-12).join('\n');
-   if(uploaded)await start();
- }catch(err){
-   console.error(err);$('zipStatus').textContent='❌ No pude completar la importación: '+(err?.message||err);
- }finally{$('importZipBtn').disabled=false}
-};
-\ndb.auth.onAuthStateChange(ev=>{if(ev==='SIGNED_IN'||ev==='SIGNED_OUT')setTimeout(start,0)});
+db.auth.onAuthStateChange(ev=>{if(ev==='SIGNED_IN'||ev==='SIGNED_OUT')setTimeout(start,0)});
 start();
 </script></body></html>
