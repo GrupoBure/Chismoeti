@@ -71,8 +71,30 @@ async function mediaUrl(file){
 }
 function showImage(url){$('zoomed').src=url;$('lightbox').showModal()}
 $('closeLightbox').onclick=()=>$('lightbox').close();
+function renderHotTopics(root){
+ const topics=posts.filter(post=>['chisme','candente','polémica'].includes(post.categoria));
+ if(!topics.length)return;
+ const section=make('section');
+ section.className='blog-week';
+ add(section,'h2','🔥 Temas candentes','section-title');
+ add(section,'p','Lo más polémico y lo que prendió el chat.');
+ const list=make('ul');
+ for(const post of topics){
+  const item=make('li');
+  const link=add(item,'a',post.titulo+' · '+dateFmt(post.fecha));
+  link.href='#dia-'+post.fecha;
+  link.addEventListener('click',()=>{
+   const day=$('dia-'+post.fecha);
+   if(day)day.open=true;
+  });
+  list.append(item);
+ }
+ section.append(list);
+ root.append(section);
+}
 function render(){
  const root=$('issues');root.replaceChildren();
+ renderHotTopics(root);
  const photos=[];
  const grouped=new Map();
  for(const post of posts){if(!grouped.has(post.semana_inicio))grouped.set(post.semana_inicio,[]);grouped.get(post.semana_inicio).push(post)}
@@ -91,7 +113,7 @@ function render(){
   add(group,'p',overview);
   add(group,'h3','Detalles por día');
   for(const [date,entries] of days){
-   const day=make('details');day.className='blog-day';
+   const day=make('details');day.className='blog-day';day.id='dia-'+date;
    const weekday=new Date(date+'T12:00:00Z').toLocaleDateString('es-MX',{weekday:'long',timeZone:'UTC'});
    add(day,'summary',weekday[0].toUpperCase()+weekday.slice(1)+' '+dateFmt(date));
    for(const post of entries){
@@ -102,6 +124,11 @@ function render(){
   root.append(group);
  }
  root.hidden=false;
+ const linkedDay=document.getElementById(location.hash.slice(1));
+ if(linkedDay?.classList.contains('blog-day')){
+  linkedDay.open=true;
+  linkedDay.scrollIntoView();
+ }
  for(let i=0;i<Math.min(4,photos.length);i++) void loadPhotos(photos);
 }
 function renderPost(post,photos){
