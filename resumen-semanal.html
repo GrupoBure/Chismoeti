@@ -12,101 +12,115 @@ main{max-width:1030px;margin:26px auto;padding:0 18px}.back{display:inline-block
 [hidden]{display:none!important}@media(max-width:680px){main{margin:0;padding:0}.paper{border-radius:0;padding:18px}.stats{grid-template-columns:repeat(2,1fr)}.columns{grid-template-columns:1fr}.gallery{grid-template-columns:repeat(2,1fr)}.figure img{height:145px}}
 </style></head><body>
 <main><a class="back" href="./index.html">← Volver a Chismoeti</a><div class="paper">
-<header class="masthead"><div class="eyebrow">Generación E-6 · 1997–2000 · Solo registrados</div><h1>El Chismoeti Semanal 📰</h1><p class="muted">Uno se desconecta tantito y se arma el desmadre. 😂</p></header>
+<header class="masthead"><div class="eyebrow">Generación E-6 · 1997–2000 · Solo registrados</div><h1>El blog del Chismoeti 📰</h1><p class="muted">Una semana, varios chismes. Lo que pasó de verdad, contado como hablamos nosotros. 😂</p></header>
 <div id="status" class="notice" role="status">🔒 Comprobando tu sesión y tu perfil…</div>
 <div id="guest" hidden><p>Para leer los resúmenes necesitas entrar con tu correo y tener un perfil vinculado en Chismoeti.</p><a class="btn" href="./index.html">Entrar a Chismoeti</a></div>
 <div id="issues" hidden></div>
 <section id="admin" class="admin" hidden>
-<h2>📤 Administrar imágenes de la edición</h2><p>Selecciona las cinco imágenes originales de la edición. Se guardarán en un bucket <strong>privado</strong> de Supabase, no en GitHub.</p>
-<label for="files">Imágenes JPG o PNG</label><input id="files" type="file" accept="image/jpeg,image/png,image/webp" multiple>
+<h2>📤 Fotos para el blog</h2><p>Elige la entrada a la que pertenecen las fotos y súbelas. Se guardan en almacenamiento <strong>privado</strong>, no en GitHub.</p><label for="postSelect">Entrada del blog</label><select id="postSelect" style="width:100%;padding:11px;border-radius:9px;border:1px solid #b3c5d4"></select>
+<label for="files">Imágenes JPG, PNG o WebP</label><input id="files" type="file" accept="image/jpeg,image/png,image/webp" multiple>
 <p><button class="btn" id="uploadBtn">Subir imágenes privadas</button></p>
 <div id="uploadStatus" class="upload-log" role="status"></div>
 </section>
-<footer class="footer">El Chismoeti Semanal · Sólo cuentas con perfil vinculado · El chat original no se publica.</footer>
+<footer class="footer">El blog del Chismoeti · Solo perfiles vinculados · El chat original no se publica.</footer>
 </div></main>
 <dialog id="lightbox"><button class="btn" id="closeLightbox">Cerrar ×</button><img alt="Imagen de la semana" id="zoomed"></dialog>
 <script>
 const db=window.supabase.createClient('https://ojetnxragvscilqvdvqb.supabase.co','sb_publishable_KY1zWYr0UV_uC4s40DUQkg_Na0IDP96');
 const $=id=>document.getElementById(id);
-const make=(tag,text,cls)=>{const e=document.createElement(tag);if(text!==undefined)e.textContent=String(text);if(cls)e.className=cls;return e};
-const galleryBucket='chismoeti_semanal';
-let signedInAdmin=false, activeUser=null, availableIssues=[];
-function status(s,warn=false){$('status').textContent=s;$('status').className='notice'+(warn?' warn':'')}
-function showGuest(s){status(s,true);$('guest').hidden=false}
-function add(parent,tag,value,cls){const n=make(tag,value,cls);parent.append(n);return n}
-async function signedImage(path){
- const {data,error}=await db.storage.from(galleryBucket).createSignedUrl(path,3600);
- return error?null:data?.signedUrl||null;
+const make=(tag,value,cls)=>{const el=document.createElement(tag);if(value!==undefined)el.textContent=String(value);if(cls)el.className=cls;return el};
+const add=(parent,tag,text,cls)=>{const el=make(tag,text,cls);parent.append(el);return el};
+let isAdmin=false, posts=[];
+function status(msg){$('status').textContent=msg}
+function guest(msg){status(msg);$('guest').hidden=false}
+const storage='chismoeti_semanal';
+const dateFmt=d=>{const [y,m,day]=d.split('-');return day+'/'+m+'/'+y};
+async function signedUrl(path){
+ const {data,error}=await db.storage.from(storage).createSignedUrl(path,3600);
+ return error?null:data?.signedUrl;
 }
-function openImage(url){$('zoomed').src=url;$('lightbox').showModal()}
+function showImage(url){$('zoomed').src=url;$('lightbox').showModal()}
 $('closeLightbox').onclick=()=>$('lightbox').close();
-async function renderIssue(issue){
- const c=issue.contenido||{}, wrap=make('article');
- const h=make('header',undefined,'masthead');
- add(h,'p','EDICIÓN '+(c.numero||'01')+' · '+issue.semana_inicio+' al '+issue.semana_fin,'eyebrow');
- add(h,'h2',issue.titulo,'section-title');wrap.append(h);
- add(wrap,'p',c.intro||'','lede');
- const stats=make('section',undefined,'stats');
- for(const s of (Array.isArray(c.estadisticas)?c.estadisticas:[])){
-  const tile=make('div',undefined,'stat');add(tile,'strong',s.valor);add(tile,'span',s.etiqueta);stats.append(tile);
+async function render(){
+ const root=$('issues');root.replaceChildren();
+ const {data:media,error:mediaError}=await db.from('chismoeti_blog_imagenes').select('post_id,ruta,pie');
+ if(mediaError) console.error('Galería:',mediaError);
+ const mediaByPost=new Map();
+ for(const pic of (media||[])){if(!mediaByPost.has(pic.post_id))mediaByPost.set(pic.post_id,[]);mediaByPost.get(pic.post_id).push(pic)}
+ const grouped=new Map();
+ for(const post of posts){if(!grouped.has(post.semana_inicio))grouped.set(post.semana_inicio,[]);grouped.get(post.semana_inicio).push(post)}
+ for(const [week,articles] of grouped){
+  const group=make('section');group.style.marginTop='26px';
+  const heading=add(group,'h2','🗓️ Semana del '+dateFmt(week),'section-title');
+  heading.style.borderBottom='2px solid #b6d7da';heading.style.paddingBottom='10px';
+  for(const post of articles){
+   const article=make('article');article.className='story blog-post';article.style.padding='20px 0 25px';
+   const head=make('div');
+   const tag=add(head,'span',post.categoria.toUpperCase(),'pill');
+   add(head,'span',' · '+dateFmt(post.fecha),'date');
+   const title=add(article,'h3',post.titulo);title.style.fontSize='clamp(21px,3.4vw,29px)';title.style.fontFamily='Georgia,serif';
+   article.insertBefore(head,title);
+   add(article,'p',post.texto);
+   const imgs=mediaByPost.get(post.id)||[];
+   if(imgs.length){
+    const gallery=make('div');gallery.className='gallery';gallery.style.marginTop='15px';
+    for(const pic of imgs){
+      const url=await signedUrl(pic.ruta);if(!url)continue;
+      const fig=make('figure');fig.className='figure';
+      const img=make('img');img.loading='lazy';img.src=url;img.alt=pic.pie||'Imagen del grupo';img.onclick=()=>showImage(url);
+      fig.append(img);add(fig,'figcaption',pic.pie||'Foto del grupo');gallery.append(fig);
+    }
+    article.append(gallery);
+   }
+   group.append(article);
+  }
+  root.append(group);
  }
- wrap.append(stats);
- const cols=make('div',undefined,'columns');const left=make('div');const right=make('div');
- const sections=Array.isArray(c.secciones)?c.secciones:[];
- sections.forEach((s,i)=>{
-  const item=make('section',undefined,'story');
-  add(item,'h3',s.titulo);add(item,'p',s.texto);
-  (i%2?right:left).append(item);
- });
- cols.append(left,right);wrap.append(cols);
- const awards=Array.isArray(c.premios)?c.premios:[];
- if(awards.length){const box=make('section',undefined,'awards');add(box,'h2','🏆 Premios de la semana');for(const a of awards){const item=make('div',undefined,'award');add(item,'h3',a.titulo);add(item,'p',a.texto);box.append(item)}wrap.append(box)}
- add(wrap,'h2','📸 Archivo visual de la semana','section-title');
- const gallery=make('div',undefined,'gallery');let found=0;
- for(const pic of (Array.isArray(c.galeria)?c.galeria:[])){
-  const url=await signedImage(pic.ruta);if(!url)continue;
-  found++;
-  const figure=make('figure',undefined,'figure');const image=make('img');image.src=url;image.alt=pic.descripcion||'Recuerdo compartido';image.loading='lazy';image.onclick=()=>openImage(url);
-  figure.append(image);add(figure,'figcaption',pic.descripcion||'Imagen compartida');gallery.append(figure);
- }
- wrap.append(found?gallery:make('p','Las imágenes de esta edición todavía están pendientes de cargar en el almacenamiento privado.','media-empty'));
- if(c.cierre)add(wrap,'p',c.cierre,'notice');
- $('issues').append(wrap);
+ root.hidden=false;
 }
 async function start(){
- $('guest').hidden=true;$('issues').hidden=true;$('admin').hidden=true;$('issues').replaceChildren();status('🔒 Comprobando tu acceso…');
+ $('guest').hidden=true;$('issues').hidden=true;$('admin').hidden=true;status('🔒 Comprobando tu sesión…');
  try{
-  const {data:{user},error:userError}=await db.auth.getUser();
-  if(userError||!user){showGuest('🔒 Acceso exclusivo para compañeros registrados.');return}
-  activeUser=user;
-  const {data:profile,error:profileError}=await db.from('perfiles').select('id').eq('user_id',user.id).maybeSingle();
-  if(profileError){status('No pude revisar tu perfil: '+profileError.message,true);return}
-  if(!profile){showGuest('🔒 Tu cuenta aún no tiene un perfil vinculado.');return}
-  const {data:adminRow,error:adminError}=await db.from('admins').select('user_id').eq('user_id',user.id).maybeSingle();
-  signedInAdmin=!adminError&&!!adminRow;
-  const {data:issues,error:issueError}=await db.from('resumenes_semanales').select('id,titulo,semana_inicio,semana_fin,contenido').eq('publicado',true).order('semana_inicio',{ascending:false});
-  if(issueError){status((issueError.code==='PGRST205'||issueError.code==='42P01')?'✅ Acceso reconocido. Falta ejecutar el archivo SQL de instalación para publicar la primera edición.':'La edición privada no se pudo cargar: '+issueError.message,true);return}
-  availableIssues=issues||[];status('✅ Tu perfil está autorizado. Bienvenido al chisme de la semana.');
-  if(!availableIssues.length){add($('issues'),'p','Todavía no hay ediciones publicadas.');}
-  else for(const issue of availableIssues)await renderIssue(issue);
-  $('issues').hidden=false;
-  if(signedInAdmin)$('admin').hidden=false;
- }catch(err){status('No se pudo completar la carga: '+(err?.message||'Error inesperado'),true);console.error(err)}
+  const {data:{user},error:authErr}=await db.auth.getUser();
+  if(authErr||!user){guest('🔒 Para leer el blog necesitas iniciar sesión en Chismoeti.');return}
+  const {data:profile,error:profileErr}=await db.from('perfiles').select('id').eq('user_id',user.id).maybeSingle();
+  if(profileErr){status('No pude comprobar tu perfil: '+profileErr.message);return}
+  if(!profile){guest('🔒 Necesitas tener un perfil vinculado para entrar al blog.');return}
+  const {data:ad,error:adErr}=await db.from('admins').select('user_id').eq('user_id',user.id).maybeSingle();
+  isAdmin=!adErr&&!!ad;
+  const {data,error}=await db.from('chismoeti_blog_posts').select('id,fecha,semana_inicio,titulo,categoria,texto,orden').eq('publicado',true).order('fecha',{ascending:false}).order('orden',{ascending:true});
+  if(error){status((error.code==='PGRST205'||error.code==='42P01')?'✅ Sesión autorizada. Falta instalar el nuevo SQL del blog en Supabase.':'⚠️ No pude cargar el blog: '+error.message);return}
+  posts=data||[];
+  status('✅ Acceso exclusivo para compañeros registrados · '+posts.length+' entradas publicadas.');
+  if(!posts.length){add($('issues'),'p','Todavía no hay entradas en el blog.');$('issues').hidden=false}
+  else await render();
+  if(isAdmin){
+   const select=$('postSelect');select.replaceChildren();
+   for(const post of posts){const option=make('option',dateFmt(post.fecha)+' · '+post.titulo);option.value=post.id;select.append(option)}
+   $('admin').hidden=false;
+  }
+ }catch(err){status('⚠️ Error al cargar el blog: '+(err?.message||err));console.error(err)}
 }
 $('uploadBtn').onclick=async()=>{
- if(!signedInAdmin||!activeUser)return;
- const files=Array.from($('files').files||[]);if(!files.length){$('uploadStatus').textContent='Selecciona una o más imágenes.';return}
- const allowed=new Set(['IMG-20261030-WA0067.jpg','IMG-20261027-WA0064.jpg','IMG-20261030-WA0035.jpg','IMG-20261030-WA0036.jpg','IMG-20261029-WA0599.jpg']);
- const log=[];$('uploadBtn').disabled=true;
+ if(!isAdmin||!$('postSelect').value)return;
+ const files=Array.from($('files').files||[]);if(!files.length){$('uploadStatus').textContent='Selecciona una imagen.';return}
+ $('uploadBtn').disabled=true;
+ const log=[];
  for(const file of files){
-  if(!allowed.has(file.name)){log.push('⚠️ No incluido en esta edición: '+file.name);continue}
-  const {error}=await db.storage.from(galleryBucket).upload('edicion-01/'+file.name,file,{upsert:true,contentType:file.type});
-  log.push(error?'❌ '+file.name+': '+error.message:'✅ '+file.name);
+  if(!['image/jpeg','image/png','image/webp'].includes(file.type)||file.size>10*1024*1024){log.push('⚠️ '+file.name+': formato inválido o más de 10 MB');continue}
+  const postId=$('postSelect').value;
+  const clean=file.name.replace(/[^a-zA-Z0-9._-]/g,'_');
+  const path='blog/'+postId+'/'+Date.now()+'-'+clean;
+  const uploaded=await db.storage.from(storage).upload(path,file,{upsert:false,contentType:file.type});
+  if(uploaded.error){log.push('❌ '+file.name+': '+uploaded.error.message);continue}
+  const saved=await db.from('chismoeti_blog_imagenes').insert({post_id:postId,ruta:path,pie:file.name});
+  if(saved.error){log.push('⚠️ Foto almacenada, pero no vinculada: '+saved.error.message)}
+  else log.push('✅ '+file.name);
   $('uploadStatus').textContent=log.join('\n');
  }
  $('uploadBtn').disabled=false;
- if(log.some(s=>s.startsWith('✅')))await start();
+ if(log.some(x=>x.startsWith('✅')))await start();
 };
-db.auth.onAuthStateChange(event=>{if(event==='SIGNED_IN'||event==='SIGNED_OUT')setTimeout(start,0)});
+db.auth.onAuthStateChange(ev=>{if(ev==='SIGNED_IN'||ev==='SIGNED_OUT')setTimeout(start,0)});
 start();
 </script></body></html>
