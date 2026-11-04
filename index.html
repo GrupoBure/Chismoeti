@@ -1308,6 +1308,22 @@ async function loadProfiles() {
 
   await loadCools();
   await refreshAuthState();
+  if (session?.user && ownProfile) {
+    const { data: contacts, error: contactError } = await client.rpc("contactos_companeros");
+    if (contactError) {
+      console.error("No se pudieron consultar contactos:", contactError);
+    } else {
+      const byId = new Map((Array.isArray(contacts) ? contacts : []).map(c => [Number(c.id), c]));
+      profiles.forEach(p => {
+        const c = byId.get(Number(p.id));
+        if (c) {
+          p.telefono = c.telefono || null;
+          p.correo = c.correo || null;
+        }
+      });
+      ownProfile = profiles.find(p => p.user_id === session.user.id) || null;
+    }
+  }
   rebuildCoolState();
   render();
   updateAuthUI();
