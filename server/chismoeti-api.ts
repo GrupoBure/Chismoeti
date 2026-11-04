@@ -1,14 +1,11 @@
-npm warn Unknown env config "http-proxy". This will stop working in the next major version of npm.
-
-  ../../../tmp/chismoeti-api.js  6.6kb
-
-⚡ Done in 6ms
 // Chismoeti · lector privado del blog guardado en Dropbox.
 // Deploy with Verify JWT disabled. This function validates the Supabase session itself.
 const ALLOWED_ORIGINS = new Set([
   "https://grupobure.github.io",
 ]);
 const BLOG_ROOT = "/Chismoeti/Blog/Edicion_01";
+const CHISMOETI_URL = "https://ojetnxragvscilqvdvqb.supabase.co";
+const CHISMOETI_ANON = "sb_publishable_KY1zWYr0UV_uC4s40DUQkg_Na0IDP96";
 
 class ApiError extends Error {
   constructor(public status: number, message: string) {
@@ -66,8 +63,15 @@ async function supa(path: string, init: RequestInit = {}, bearer?: string) {
 async function requireProfile(request: Request) {
   const token = request.headers.get("authorization")?.match(/^Bearer (.+)$/i)?.[1];
   if (!token) throw new ApiError(401, "Inicia sesión para leer el blog.");
-  const user = await supa("/auth/v1/user", {}, token);
-  const rows = await supa(
+  const chismoeti = async (path: string) => {
+    const response = await fetch(CHISMOETI_URL + path, {
+      headers: { apikey: CHISMOETI_ANON, Authorization: "Bearer " + token },
+    });
+    if (!response.ok) throw new ApiError(401, "Tu sesión de Chismoeti no es válida.");
+    return await response.json();
+  };
+  const user = await chismoeti("/auth/v1/user");
+  const rows = await chismoeti(
     "/rest/v1/perfiles?select=id&user_id=eq." + encodeURIComponent(user.id) + "&limit=1",
   );
   if (!rows?.length) throw new ApiError(403, "Necesitas un perfil vinculado para leer el blog.");
