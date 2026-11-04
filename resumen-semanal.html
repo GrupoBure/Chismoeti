@@ -10,6 +10,7 @@ main{max-width:1030px;margin:26px auto;padding:0 18px}.back{display:inline-block
 .awards{background:#124c52;color:#fff;border-radius:16px;padding:22px;margin:24px 0}.awards h2{margin:0 0 12px}.award{border-top:1px solid #ffffff40;padding:11px 0}.award:first-of-type{border-top:0}.award h3{margin:0 0 5px}.award p{line-height:1.55;margin:0}.gallery{display:grid;grid-template-columns:repeat(3,1fr);gap:12px}.figure{margin:0;border:1px solid var(--line);border-radius:13px;overflow:hidden;background:#fff}.figure img{display:block;width:100%;height:200px;object-fit:cover;cursor:zoom-in}.figure figcaption{font-size:12px;padding:10px;color:#475569;line-height:1.45;white-space:pre-line}.media-empty{border:1px dashed #93a6ba;padding:24px;border-radius:14px;text-align:center;color:#66758b}.notice{margin:12px 0;padding:14px;border:1px solid #bdd7f1;background:#edf6ff;border-radius:12px;line-height:1.45}.notice.warn{background:#fff8e6;border-color:#e8d39a}.error{color:#a02b2b}.btn{display:inline-block;padding:11px 16px;border:0;border-radius:11px;background:#2563eb;color:white;font-weight:800;cursor:pointer;text-decoration:none}.btn:disabled{opacity:.55;cursor:not-allowed}
 .admin{border:1px solid #b2dbcb;background:#f1faf6;padding:18px;border-radius:14px;margin-top:28px}.admin label{font-weight:750;display:block;margin:12px 0}.admin input{width:100%;padding:9px;border:1px solid #b3c5d4;border-radius:8px}.upload-log{font-size:13px;white-space:pre-wrap;line-height:1.5}.footer{margin:24px 0 4px;border-top:1px solid var(--line);padding-top:14px;font-size:12px;color:#718096}dialog{border:0;border-radius:16px;padding:12px;max-width:min(96vw,900px);box-shadow:0 22px 60px #0005}dialog::backdrop{background:#0b1525bd}dialog img{max-width:90vw;max-height:80vh;display:block;object-fit:contain}dialog button{float:right;margin:0 0 8px}
 [hidden]{display:none!important}@media(max-width:680px){main{margin:0;padding:0}.paper{border-radius:0;padding:18px}.stats{grid-template-columns:repeat(2,1fr)}.columns{grid-template-columns:1fr}.gallery{grid-template-columns:repeat(2,1fr)}.figure img{height:145px}}
+.blog-week,.blog-day{border:1px solid var(--line);border-radius:12px;padding:12px;margin-top:12px}.blog-week>summary,.blog-day>summary{cursor:pointer;font-weight:800;color:var(--teal)}.blog-week>summary{font-size:1.15rem}.blog-post>p{white-space:pre-line}
 </style></head><body>
 <main><a class="back" href="./index.html">← Volver a Chismoeti</a><div class="paper">
 <header class="masthead"><div class="eyebrow">Generación E-6 · 1997–2000 · Solo registrados</div><h1>El blog del Chismoeti 📰</h1><p class="muted">Una semana, varios chismes. Lo que pasó de verdad, contado como hablamos nosotros. 😂</p></header>
@@ -76,10 +77,28 @@ function render(){
  const grouped=new Map();
  for(const post of posts){if(!grouped.has(post.semana_inicio))grouped.set(post.semana_inicio,[]);grouped.get(post.semana_inicio).push(post)}
  for(const [week,articles] of grouped){
-  const group=make('section');group.style.marginTop='26px';
-  const heading=add(group,'h2','🗓️ Semana del '+dateFmt(week),'section-title');
-  heading.style.borderBottom='2px solid #b6d7da';heading.style.paddingBottom='10px';
+  const group=make('details');group.className='blog-week';
+  const days=new Map();
   for(const post of articles){
+   if(!days.has(post.fecha))days.set(post.fecha,[]);
+   days.get(post.fecha).push(post);
+  }
+  add(group,'summary','Semana del '+dateFmt(week)+' · '+days.size+(days.size===1?' día':' días'));
+  for(const [date,entries] of days){
+   const day=make('details');day.className='blog-day';
+   const weekday=new Date(date+'T12:00:00Z').toLocaleDateString('es-MX',{weekday:'long',timeZone:'UTC'});
+   add(day,'summary',weekday[0].toUpperCase()+weekday.slice(1)+' '+dateFmt(date));
+   for(const post of entries){
+    day.append(renderPost(post,photos));
+   }
+   group.append(day);
+  }
+  root.append(group);
+ }
+ root.hidden=false;
+ for(let i=0;i<Math.min(4,photos.length);i++) void loadPhotos(photos);
+}
+function renderPost(post,photos){
    const article=make('article');article.className='story blog-post';article.style.padding='20px 0 25px';
    const head=make('div');
    const tag=add(head,'span',post.categoria.toUpperCase(),'pill');
@@ -97,12 +116,7 @@ function render(){
     }
     article.append(gallery);
    }
-   group.append(article);
-  }
-  root.append(group);
- }
- root.hidden=false;
- for(let i=0;i<Math.min(4,photos.length);i++) void loadPhotos(photos);
+   return article;
 }
 async function loadPhotos(photos){
  while(photos.length){
