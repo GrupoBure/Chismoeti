@@ -199,67 +199,91 @@ function renderPost(post,photos){
    return article;
 }
 function openChismeArcade(article,post,play){
- const dialog=make('dialog');
- dialog.id='chisme-arcade';
- dialog.setAttribute('aria-label','Revienta el chisme');
+ const dialog=make('dialog');dialog.id='chisme-arcade';
  const bar=add(dialog,'div',undefined,'arcade-bar');
  add(bar,'strong','💥 Revienta el chisme');
  const reset=add(bar,'button','Otra ronda','btn');
  const close=add(bar,'button','Salir','btn');
- close.onclick=()=>dialog.close();
- const score=add(dialog,'p');
- score.setAttribute('role','status');
- const field=add(dialog,'div',undefined,'arcade-field');
- const reduced=matchMedia('(prefers-reduced-motion: reduce)').matches;
- const pieces=[{label:post.titulo},...post.texto.split(/\n\s*\n/).filter(Boolean).map(label=>({label}))];
- for(const row of article.querySelectorAll('.chat-reaction')){
-  const bubble=row.querySelector('.chat-bubble');
-  pieces.push({label:[...bubble.children].map(el=>el.textContent).join(' · ')});
-  const sticker=row.querySelector('img[src]');
-  if(sticker)pieces.push({label:sticker.alt,src:sticker.src});
+ const status=add(dialog,'p','A/D o flechas · Espacio para saltar, mantén para volar · Clic o toque para disparar');
+ const canvas=add(dialog,'canvas');canvas.width=720;canvas.height=420;
+ canvas.style.cssText='width:100%;display:block;touch-action:none;border-radius:10px';
+ canvas.setAttribute('aria-label','Escenario del Gran Carnal');
+ const ctx=canvas.getContext('2d');
+ const controls=add(dialog,'div',undefined,'arcade-bar');
+ const keys=new Set();
+ for(const [label,key] of [['◀','ArrowLeft'],['▶','ArrowRight'],['⬆ Salta / vuela','Space']]){
+  const b=add(controls,'button',label,'btn');b.style.touchAction='none';
+  b.onpointerdown=e=>{b.setPointerCapture(e.pointerId);keys.add(key)};
+  b.onlostpointercapture=()=>keys.delete(key);
  }
- let hits=0;
- let round=0;
+ const score=add(dialog,'p');score.setAttribute('role','status');
+ const rows=[...article.querySelectorAll('.chat-reaction')];
+ const labels=[post.titulo,...rows.map(row=>row.querySelector('.chat-bubble p').textContent)];
+ let blocks,shots,particles,player,frame,last=0,aim=null,nextShot=0;
  function restart(){
-  round++;
-  hits=0;
-  field.replaceChildren();
-  score.textContent='Haz clic o toca las piezas para volarlas · 0 de '+pieces.length;
-  for(const piece of pieces){
-   const target=add(field,'button',piece.src?undefined:piece.label,'arcade-target');
-   if(piece.src){
-    const img=add(target,'img');
-    img.src=piece.src;
-    img.alt=piece.label;
-   }
-   target.onclick=async()=>{
-    const currentRound=round;
-    target.disabled=true;
-    const box=target.getBoundingClientRect();
-    if(!reduced){
-     for(let i=0;i<8;i++){
-      const chip=add(dialog,'span',undefined,'arcade-burst');
-      chip.style.left=(box.left+box.width/2)+'px';
-      chip.style.top=(box.top+box.height/2)+'px';
-      const angle=i*Math.PI/4;
-      chip.animate([{transform:'translate(0,0)'},{transform:'translate('+Math.cos(angle)*85+'px,'+Math.sin(angle)*85+'px) rotate(150deg)',opacity:0}],300).finished.then(()=>chip.remove(),()=>chip.remove());
-     }
-     await target.animate([{transform:'scale(1)'},{transform:'translate(24px,-22px) rotate(12deg) scale(.75)',opacity:0}],220).finished.catch(()=>{});
-    }
-    if(!dialog.isConnected||round!==currentRound)return;
-    target.classList.add('hit');
-    hits++;
-    score.textContent=hits===pieces.length?'🏆 ¡El Gran Carnal quedó hecho confeti!':hits+' de '+pieces.length+' piezas reventadas';
-    (field.querySelector('button:not(:disabled)')||reset).focus({preventScroll:true});
-   };
-  }
+  player={x:45,y:384,v:0,ground:true,fuel:1,face:1};
+  shots=[];particles=[];aim=null;keys.clear();nextShot=0;
+  blocks=labels.flatMap((label,i)=>{
+   const y=325-i*69,x=i%2?255:110;
+   const sticker=rows[i-1]?.querySelector('img[src]');
+   const parts=label.match(/.{1,25}(?:\s|$)|\S{1,25}/g)||[label];
+   return [{x,y,w:230,h:56,label:parts.slice(0,3),hp:2},...(sticker?[{x:x+237,y,w:56,h:56,img:sticker,hp:1}]:[])];
+  });
+  score.textContent='Piezas en pie: '+blocks.length;
  }
- reset.onclick=()=>{restart();field.querySelector('button')?.focus();};
- dialog.addEventListener('close',()=>{dialog.remove();if(play.isConnected)play.focus();},{once:true});
- document.body.append(dialog);
- restart();
- dialog.showModal();
- field.querySelector('button')?.focus();
+ function pointer(e){const b=canvas.getBoundingClientRect();return {x:(e.clientX-b.left)*720/b.width,y:(e.clientY-b.top)*420/b.height}}
+ function fire(to){const a=Math.atan2(to.y-player.y+14,to.x-player.x);shots.push({x:player.x,y:player.y-14,dx:Math.cos(a)*640,dy:Math.sin(a)*640})}
+ canvas.onpointerdown=e=>{canvas.setPointerCapture(e.pointerId);aim=pointer(e);fire(aim);nextShot=performance.now()+160};
+ canvas.onpointermove=e=>{if(aim)aim=pointer(e)};
+ canvas.onlostpointercapture=()=>{aim=null};
+ const keyHandler=e=>{if(!['ArrowLeft','ArrowRight','KeyA','KeyD','Space','ArrowUp','KeyW','KeyF'].includes(e.code))return;
+ if(e.target.tagName==='BUTTON'&&e.code==='Space')return;
+ e.preventDefault();if(e.type==='keyup')keys.delete(e.code);else{keys.add(e.code);if(e.code==='KeyF'&&!e.repeat)fire({x:player.x+player.face*160,y:player.y-14})}};
+ dialog.addEventListener('keydown',keyHandler);dialog.addEventListener('keyup',keyHandler);
+ window.addEventListener('blur',clear);
+ function clear(){keys.clear();aim=null}
+ function tick(now){
+  const dt=Math.min(.025,(now-last)/1000);last=now;
+  const dir=Number(keys.has('ArrowRight')||keys.has('KeyD'))-Number(keys.has('ArrowLeft')||keys.has('KeyA'));
+  player.x=Math.max(12,Math.min(708,player.x+dir*235*dt));if(dir)player.face=dir;
+  const jump=keys.has('Space')||keys.has('ArrowUp')||keys.has('KeyW');
+  if(jump&&player.ground){player.v=-355;player.ground=false}
+  else if(jump&&player.fuel>0){player.v-=1040*dt;player.fuel-=dt}
+  player.v=Math.min(650,player.v+850*dt);
+  const oldY=player.y;player.y=Math.max(25,player.y+player.v*dt);
+  const floor=blocks.reduce((y,b)=>player.x>b.x&&player.x<b.x+b.w&&oldY<=b.y+.5&&player.y>=b.y?Math.min(y,b.y):y,384);
+  player.ground=player.y>=floor;if(player.ground){player.y=floor;player.v=0;player.fuel=1}
+  if(aim&&now>=nextShot){fire(aim);nextShot=now+160}
+  for(const s of shots){
+   s.x+=s.dx*dt;s.y+=s.dy*dt;
+   const b=blocks.find(b=>s.x>=b.x&&s.x<=b.x+b.w&&s.y>=b.y&&s.y<=b.y+b.h);
+   if(!b)continue;
+   s.dead=true;b.hp--;
+   for(let i=0;i<12;i++)particles.push({x:s.x,y:s.y,dx:(Math.random()-.5)*310,dy:-Math.random()*280,life:.6});
+   if(!b.hp){blocks.splice(blocks.indexOf(b),1);score.textContent=blocks.length?'Piezas en pie: '+blocks.length:'🏆 ¡El Gran Carnal quedó hecho confeti!'}
+  }
+  shots=shots.filter(s=>!s.dead&&s.x>0&&s.x<720&&s.y>0&&s.y<420);
+  ctx.fillStyle='#121d34';ctx.fillRect(0,0,720,420);
+  ctx.fillStyle='#31436b';for(let x=0;x<720;x+=34)ctx.fillRect(x,384,32,36);
+  for(const b of blocks){
+   ctx.fillStyle=b.hp===1?'#467a75':'#28605c';ctx.fillRect(b.x,b.y,b.w,b.h);
+   if(b.img?.complete&&b.img.naturalWidth)ctx.drawImage(b.img,b.x,b.y,b.w,b.h);
+   else if(b.label){ctx.fillStyle='#fff';ctx.font='14px monospace';b.label.forEach((line,i)=>ctx.fillText(line.trim(),b.x+7,b.y+16+i*16,b.w-14))}
+  }
+  ctx.fillStyle='#ffda73';for(const s of shots)ctx.fillRect(s.x-3,s.y-2,7,4);
+  for(const p of particles){p.x+=p.dx*dt;p.y+=p.dy*dt;p.dy+=500*dt;p.life-=dt;ctx.fillRect(p.x,p.y,4,4)}
+  particles=particles.filter(p=>p.life>0);
+  ctx.fillStyle='#85e8bb';ctx.fillRect(player.x-10,player.y-27,20,20);
+  ctx.fillStyle='#f3bd84';ctx.fillRect(player.x-7,player.y-39,14,12);
+  ctx.fillStyle='#e4edf9';ctx.fillRect(player.x+player.face*10-5,player.y-17,15,5);
+  ctx.fillStyle='#90a5dc';ctx.fillRect(player.x-9,player.y-7,7,7);ctx.fillRect(player.x+2,player.y-7,7,7);
+  frame=requestAnimationFrame(tick);
+ }
+ reset.onclick=()=>{restart();canvas.focus()};
+ canvas.tabIndex=0;
+ status.append(' · F para disparar con teclado');
+ dialog.addEventListener('close',()=>{cancelAnimationFrame(frame);window.removeEventListener('blur',clear);dialog.remove();if(play.isConnected)play.focus()},{once:true});
+ document.body.append(dialog);restart();dialog.showModal();canvas.focus();last=performance.now();frame=requestAnimationFrame(tick);
 }
 async function loadPhotos(photos){
  while(photos.length){
