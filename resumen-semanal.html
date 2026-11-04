@@ -150,8 +150,9 @@ function renderPost(post,photos){
      add(bubble,'strong',reaction.speaker||'Del chat');
      add(bubble,'p',reaction.message||'');
      const img=make('img');img.alt=reaction.caption||'Sticker de reacción';
-     row.append(bubble,img);thread.append(row);
-     photos.push({img,file:reaction.file,reaction:true});
+     row.append(bubble);thread.append(row);
+     if(reaction.file){row.append(img);photos.push({img,file:reaction.file,reaction:true});}
+     else row.style.gridTemplateColumns='minmax(0,1fr)';
     }
     article.append(thread);
    }
