@@ -1349,9 +1349,34 @@ function cleanupEmptyProfileGalleries() {
   });
 }
 
-window.openProfile = function(id) {
+window.openProfile = async function(id) {
   const p = profiles.find(x => Number(x.id) === Number(id));
   if (!p) return;
+
+  // Reintentar los datos privados al abrir un perfil, por si el inicio de
+  // sesión terminó después de la primera carga de la página.
+  let privateContactError = "";
+  const { data: { user: activeUser }, error: activeUserError } = await client.auth.getUser();
+  const linked = activeUser && profiles.some(x => x.user_id === activeUser.id);
+  if (activeUserError) {
+    privateContactError = "No pude verificar tu sesión: " + activeUserError.message;
+  } else if (linked) {
+    currentUser = activeUser;
+    ownProfile = profiles.find(x => x.user_id === activeUser.id) || null;
+    const { data: contactRows, error: rpcError } = await client.rpc("contactos_companeros");
+    if (rpcError) {
+      privateContactError = "No pude leer los contactos privados: " + rpcError.message;
+      console.error("contactos_companeros:", rpcError);
+    } else if (!Array.isArray(contactRows)) {
+      privateContactError = "La función de contactos no devolvió una lista.";
+    } else {
+      const match = contactRows.find(c => Number(c.id) === Number(p.id));
+      if (match) {
+        p.telefono = match.telefono || null;
+        p.correo = match.correo || null;
+      }
+    }
+  }
 
   profileContent.dataset.profileId = String(p.id);
   profileContent.innerHTML = `
@@ -1395,6 +1420,8 @@ window.openProfile = function(id) {
         <h4>Algo que quizá nadie recuerda 😏</h4>
         <p>${esc(p.dato_curioso)}</p>
       </div>` : ""}
+
+    ${privateContactError ? `<div class="profile-section" style="color:#991b1b"><h4>⚠️ Contactos privados</h4><p>${esc(privateContactError)}</p></div>` : ""}
 
     ${(currentUser && ownProfile && (p.telefono || p.correo)) ? `
       <div class="profile-section">
