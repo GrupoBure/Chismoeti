@@ -13,6 +13,16 @@ main{max-width:1030px;margin:26px auto;padding:0 18px}.back{display:inline-block
 .blog-week,.blog-day{border:1px solid var(--line);border-radius:12px;padding:12px;margin-top:12px}.blog-week>summary,.blog-day>summary{cursor:pointer;font-weight:800;color:var(--teal)}.blog-week>summary{font-size:1.15rem}.blog-post>p{white-space:pre-line}
 .sticker-reactions{display:flex;flex-wrap:wrap;align-items:center;gap:10px;margin:10px 0 14px}.sticker-reactions img{display:block;width:66px;height:66px;object-fit:contain}.sticker-reactions img:not([src]){display:none}
 .chat-reactions{display:grid;gap:12px;margin:16px 0}.chat-reaction{display:grid;grid-template-columns:minmax(0,1fr) 92px;gap:12px;align-items:end;max-width:650px}.chat-bubble{background:#e8f7ef;border:1px solid #b9dfcf;border-radius:14px 14px 4px 14px;padding:10px 13px;box-shadow:0 3px 10px #143d5f0c}.chat-bubble strong{display:block;color:var(--teal);font-size:12px;margin-bottom:3px}.chat-bubble p{margin:0;white-space:pre-line;line-height:1.4}.chat-reaction img{display:block;width:88px;height:88px;object-fit:contain}.chat-reaction img:not([src]){visibility:hidden}
+
+#chisme-arcade{width:min(700px,94vw);max-height:90vh;border:0;border-radius:18px;padding:18px;background:#172335;color:white}
+#chisme-arcade::backdrop{background:#091321ce}
+.arcade-bar{display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-bottom:12px}
+.arcade-bar strong{margin-right:auto}
+.arcade-field{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,190px),1fr));gap:10px;overflow:hidden;padding:4px}
+.arcade-target{min-height:80px;border:2px solid #83e5bf;border-radius:10px;background:#25445b;color:white;padding:10px;cursor:crosshair;touch-action:manipulation;text-align:left;overflow-wrap:anywhere}
+.arcade-target img{height:64px;width:auto;max-width:100%;object-fit:contain;display:block;margin:auto}
+.arcade-target.hit{visibility:hidden;pointer-events:none}
+.arcade-burst{position:fixed;pointer-events:none;z-index:1;width:8px;height:8px;background:#ffe26d;border-radius:2px}
 </style></head><body>
 <main><a class="back" href="./index.html">← Volver a Chismoeti</a><div class="paper">
 <header class="masthead"><div class="eyebrow">Generación E-6 · 1997–2000 · Solo registrados</div><h1>El blog del Chismoeti 📰</h1><p class="muted">Una semana, varios chismes. Lo que pasó de verdad, contado como hablamos nosotros. 😂</p></header>
@@ -180,7 +190,76 @@ function renderPost(post,photos){
     }
     article.append(gallery);
    }
+   if(post.fecha==='2026-11-03' && post.titulo.startsWith('El Gran Carnal')){
+    const play=add(article,'button','💥 Revienta el chisme','btn');
+    play.type='button';
+    play.style.marginTop='12px';
+    play.addEventListener('click',()=>openChismeArcade(article,post,play));
+   }
    return article;
+}
+function openChismeArcade(article,post,play){
+ const dialog=make('dialog');
+ dialog.id='chisme-arcade';
+ dialog.setAttribute('aria-label','Revienta el chisme');
+ const bar=add(dialog,'div',undefined,'arcade-bar');
+ add(bar,'strong','💥 Revienta el chisme');
+ const reset=add(bar,'button','Otra ronda','btn');
+ const close=add(bar,'button','Salir','btn');
+ close.onclick=()=>dialog.close();
+ const score=add(dialog,'p');
+ score.setAttribute('role','status');
+ const field=add(dialog,'div',undefined,'arcade-field');
+ const reduced=matchMedia('(prefers-reduced-motion: reduce)').matches;
+ const pieces=[{label:post.titulo},...post.texto.split(/\n\s*\n/).filter(Boolean).map(label=>({label}))];
+ for(const row of article.querySelectorAll('.chat-reaction')){
+  const bubble=row.querySelector('.chat-bubble');
+  pieces.push({label:[...bubble.children].map(el=>el.textContent).join(' · ')});
+  const sticker=row.querySelector('img[src]');
+  if(sticker)pieces.push({label:sticker.alt,src:sticker.src});
+ }
+ let hits=0;
+ let round=0;
+ function restart(){
+  round++;
+  hits=0;
+  field.replaceChildren();
+  score.textContent='Haz clic o toca las piezas para volarlas · 0 de '+pieces.length;
+  for(const piece of pieces){
+   const target=add(field,'button',piece.src?undefined:piece.label,'arcade-target');
+   if(piece.src){
+    const img=add(target,'img');
+    img.src=piece.src;
+    img.alt=piece.label;
+   }
+   target.onclick=async()=>{
+    const currentRound=round;
+    target.disabled=true;
+    const box=target.getBoundingClientRect();
+    if(!reduced){
+     for(let i=0;i<8;i++){
+      const chip=add(dialog,'span',undefined,'arcade-burst');
+      chip.style.left=(box.left+box.width/2)+'px';
+      chip.style.top=(box.top+box.height/2)+'px';
+      const angle=i*Math.PI/4;
+      chip.animate([{transform:'translate(0,0)'},{transform:'translate('+Math.cos(angle)*85+'px,'+Math.sin(angle)*85+'px) rotate(150deg)',opacity:0}],300).finished.then(()=>chip.remove(),()=>chip.remove());
+     }
+     await target.animate([{transform:'scale(1)'},{transform:'translate(24px,-22px) rotate(12deg) scale(.75)',opacity:0}],220).finished.catch(()=>{});
+    }
+    if(!dialog.isConnected||round!==currentRound)return;
+    target.classList.add('hit');
+    hits++;
+    score.textContent=hits===pieces.length?'🏆 ¡El Gran Carnal quedó hecho confeti!':hits+' de '+pieces.length+' piezas reventadas';
+    (field.querySelector('button:not(:disabled)')||reset).focus({preventScroll:true});
+   };
+  }
+ }
+ reset.onclick=()=>{restart();field.querySelector('button')?.focus();};
+ dialog.addEventListener('close',()=>{dialog.remove();if(play.isConnected)play.focus();},{once:true});
+ document.body.append(dialog);
+ restart();
+ dialog.showModal();
+ field.querySelector('button')?.focus();
 }
 async function loadPhotos(photos){
  while(photos.length){
