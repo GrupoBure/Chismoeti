@@ -38,11 +38,11 @@ async function start(){
   const {data:{user},error:authError}=await db.auth.getUser();
   if(authError||!user){showGuest("🔒 Acceso exclusivo para miembros registrados.");return}
   const {data:profile,error:profileError}=await db.from("perfiles").select("id").eq("user_id",user.id).limit(1).maybeSingle();
-  if(profileError){status("No se pudo verificar tu perfil. Intenta abrir Chismoeti e iniciar sesión nuevamente.");return}
+  if(profileError){status("No se pudo verificar tu perfil: "+profileError.message);return}
   if(!profile){showGuest("🔒 Tu cuenta todavía no tiene un perfil registrado en Chismoeti.");return}
   const {data:issues,error:issuesError}=await db.from("resumenes_semanales").select("id,titulo,semana_inicio,semana_fin,contenido").eq("publicado",true).order("semana_inicio",{ascending:false});
   if(issuesError){
-   status(issuesError.code==="42P01"?"La sección privada está preparada; falta crear su tabla protegida en Supabase.":"No se pudieron cargar las ediciones privadas. Comprueba el acceso y vuelve a intentarlo.");
+   status((issuesError.code==="42P01"||issuesError.code==="PGRST205")?"Tu cuenta sí fue reconocida; todavía falta crear la tabla privada de resúmenes en Supabase.":"No se pudieron cargar las ediciones: "+issuesError.message);
    return;
   }
   status("✅ Acceso autorizado para un perfil registrado.");
@@ -61,6 +61,6 @@ async function start(){
   container.hidden=false;
  }catch(e){status("No se pudo comprobar el acceso en este momento. Inténtalo nuevamente.");console.error(e)}
 }
-db.auth.onAuthStateChange((event)=>{if(event==="SIGNED_IN"||event==="SIGNED_OUT")location.reload()});
+db.auth.onAuthStateChange((event)=>{if(event==="SIGNED_IN"||event==="SIGNED_OUT"){setTimeout(()=>{el("guest").hidden=true;el("empty").hidden=true;el("editions").hidden=true;start()},0)}});
 start();
 </script></body></html>
