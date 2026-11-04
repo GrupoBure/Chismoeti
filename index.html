@@ -1312,6 +1312,7 @@ async function loadProfiles() {
     const { data: contacts, error: contactError } = await client.rpc("contactos_companeros");
     if (contactError) {
       console.error("No se pudieron consultar contactos:", contactError);
+      showStatus("⚠️ Los perfiles cargaron, pero no pude consultar contactos privados: " + contactError.message, "error");
     } else {
       const byId = new Map((Array.isArray(contacts) ? contacts : []).map(c => [Number(c.id), c]));
       profiles.forEach(p => {
@@ -1585,19 +1586,16 @@ logoutBtn.onclick = async () => {
 
 authModal.addEventListener("click", e => { if (e.target === authModal) closeAuth(); });
 
-client.auth.onAuthStateChange(async (_event, session) => {
+client.auth.onAuthStateChange((_event, session) => {
   currentUser = session?.user || null;
   if (currentUser) closeAuth();
 
-  // Al entrar o salir, recargar perfiles para no conservar contactos en memoria.
-  await loadProfiles();
-  await refreshAuthState();
-  await loadCools();
-  rebuildCoolState();
-  render();
-  updateAuthUI();
-
-  await updateVisitCounters();
+  // Supabase no permite esperar consultas de auth dentro de este callback:
+  // diferimos la carga para evitar que se bloquee la sesión.
+  setTimeout(async () => {
+    await loadProfiles();
+    await updateVisitCounters();
+  }, 0);
 });
 document.getElementById("closeProfileBtn").onclick = closeProfile;
 modal.addEventListener("click", e => { if(e.target === modal) closeForm(); });
