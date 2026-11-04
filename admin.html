@@ -29,6 +29,7 @@
   <section id="deniedBox" class="panel denied hide"><h2>🚫 Acceso denegado</h2><p>Tu sesión es válida, pero este usuario no está registrado como administrador.</p><p id="deniedEmail" class="tiny"></p></section>
 
   <main id="adminApp" class="hide">
+    <div id="adminDataStatus" class="status" role="status">Cargando datos...</div>
     <div class="stats"><div class="stat"><div class="n" id="statProfiles">0</div><div class="l">👥 Perfiles registrados</div></div><div class="stat"><div class="n" id="statCools">0</div><div class="l">😎 COOLs totales</div></div><div class="stat"><div class="n" id="statVisits">0</div><div class="l">👀 Visitas totales</div></div><div class="stat"><div class="n" id="statToday">0</div><div class="l">📅 Visitas hoy</div></div></div>
     <div class="tabs"><button class="btn tab active" data-tab="coolsPane">😎 COOLs</button><button class="btn tab" data-tab="visitsPane">👀 Visitas</button><button class="btn tab" data-tab="profilesPane">👥 Perfiles</button></div>
 
@@ -50,7 +51,40 @@ function fmtDate(v){if(!v)return'';try{return new Intl.DateTimeFormat('es-MX',{d
 function isToday(v){const d=new Date(v),n=new Date();return d.getFullYear()===n.getFullYear()&&d.getMonth()===n.getMonth()&&d.getDate()===n.getDate()}
 function showLogin(){$('loginBox').classList.remove('hide');$('adminApp').classList.add('hide');$('deniedBox').classList.add('hide');$('logoutBtn').classList.add('hide')}
 async function checkAdmin(){const {data:{session}}=await client.auth.getSession();if(!session?.user){showLogin();return}const {data,error}=await client.from('admins').select('user_id,nombre').eq('user_id',session.user.id).maybeSingle();if(error||!data){console.error('Verificación de administrador:',error);$('deniedBox').querySelector('p').textContent=error?'Falló la consulta de permisos de administrador: '+error.message:'Tu sesión funciona, pero no aparece una fila de administrador asociada con esta cuenta.';$('loginBox').classList.add('hide');$('adminApp').classList.add('hide');$('deniedBox').classList.remove('hide');$('logoutBtn').classList.remove('hide');$('deniedEmail').textContent=session.user.email||'';return}$('loginBox').classList.add('hide');$('deniedBox').classList.add('hide');$('adminApp').classList.remove('hide');$('logoutBtn').classList.remove('hide');await loadAdminData()}
-async function loadAdminData(){const [pRes,cRes,vRes]=await Promise.all([client.from('perfiles').select('id,nombre,grupo,ubicacion,user_id').order('nombre'),client.from('cools').select('id,created_at,perfil_id,from_user_id').order('created_at',{ascending:false}),client.from('visitas').select('id,created_at,user_id,nombre,tipo').order('created_at',{ascending:false})]);const errors=[pRes.error,cRes.error,vRes.error].filter(Boolean);if(errors.length){console.error(errors);alert('Error del panel: '+errors.map(e=>e.message).join(' | '));return}profiles=pRes.data||[];const contactRes=await client.rpc('contactos_companeros');if(contactRes.error){console.error('Contactos privados:',contactRes.error);alert('El panel cargó, pero faltan correos: '+contactRes.error.message)}else{const byId=new Map((Array.isArray(contactRes.data)?contactRes.data:[]).map(x=>[Number(x.id),x]));profiles.forEach(p=>{p.correo=byId.get(Number(p.id))?.correo||''})}cools=cRes.data||[];visits=vRes.data||[];$('statProfiles').textContent=profiles.length;$('statCools').textContent=cools.length;$('statVisits').textContent=visits.length;$('statToday').textContent=visits.filter(v=>isToday(v.created_at)).length;renderAll()}
+async function loadAdminData(){
+  const [pRes,cRes,vRes]=await Promise.all([
+    client.from('perfiles').select('id,nombre,grupo,ubicacion,user_id').order('nombre'),
+    client.from('cools').select('id,created_at,perfil_id,from_user_id').order('created_at',{ascending:false}),
+    client.from('visitas').select('id,created_at,user_id,nombre,tipo').order('created_at',{ascending:false})
+  ]);
+  const errors=[['Perfiles',pRes.error],['COOLs',cRes.error],['Visitas',vRes.error]].filter(x=>x[1]);
+  profiles=pRes.data||[];
+  cools=cRes.data||[];
+  visits=vRes.data||[];
+  const notices=[];
+  if(errors.length){
+    notices.push(...errors.map(([name,error])=>name+': '+error.message));
+    console.error('Errores de datos del panel:',errors);
+  }
+  if(profiles.length){
+    const contactRes=await client.rpc('contactos_companeros');
+    if(contactRes.error){
+      notices.push('Contactos privados: '+contactRes.error.message);
+      console.error('Contactos privados:',contactRes.error);
+    }else{
+      const byId=new Map((Array.isArray(contactRes.data)?contactRes.data:[]).map(c=>[Number(c.id),c]));
+      profiles.forEach(p=>{p.correo=byId.get(Number(p.id))?.correo||''});
+    }
+  }
+  $('statProfiles').textContent=profiles.length;
+  $('statCools').textContent=cools.length;
+  $('statVisits').textContent=visits.length;
+  $('statToday').textContent=visits.filter(v=>isToday(v.created_at)).length;
+  const notice=$('adminDataStatus');
+  notice.textContent=notices.length?'⚠️ '+notices.join(' | '):'✅ Datos del administrador cargados.';
+  notice.className='status '+(notices.length?'bad':'ok');
+  renderAll();
+}
 const profileById=id=>profiles.find(p=>Number(p.id)===Number(id));const profileByUser=id=>profiles.find(p=>p.user_id===id);
 function renderCools(filter=''){const q=filter.trim().toLowerCase();const rows=cools.map(c=>{const g=profileByUser(c.from_user_id),r=profileById(c.perfil_id);return{...c,giverName:g?.nombre||'(usuario sin perfil)',receiverName:r?.nombre||'(perfil no encontrado)',receiverGroup:r?.grupo||''}}).filter(r=>!q||r.giverName.toLowerCase().includes(q)||r.receiverName.toLowerCase().includes(q));$('coolsBody').innerHTML=rows.length?rows.map(r=>`<tr><td><strong>${esc(r.giverName)}</strong></td><td class="arrow">→ 😎 →</td><td><strong>${esc(r.receiverName)}</strong></td><td>${r.receiverGroup?`<span class="pill blue">Grupo ${esc(r.receiverGroup)}</span>`:''}</td><td>${esc(fmtDate(r.created_at))}</td></tr>`).join(''):'<tr><td colspan="5" class="empty">No hay resultados.</td></tr>'}
 function renderVisits(filter=''){const q=filter.trim().toLowerCase();const rows=visits.filter(v=>!q||(v.nombre||'').toLowerCase().includes(q)||(v.tipo||'').toLowerCase().includes(q));$('visitsBody').innerHTML=rows.length?rows.map(v=>`<tr><td><strong>${esc(v.nombre||'Anónimo')}</strong></td><td><span class="pill ${v.tipo==='autenticado'?'green':'gray'}">${esc(v.tipo||'anonimo')}</span></td><td>${esc(fmtDate(v.created_at))}</td></tr>`).join(''):'<tr><td colspan="3" class="empty">No hay resultados.</td></tr>'}
