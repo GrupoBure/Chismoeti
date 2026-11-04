@@ -1,3 +1,8 @@
+npm warn Unknown env config "http-proxy". This will stop working in the next major version of npm.
+
+  ../../../tmp/chismoeti-api.js  6.6kb
+
+⚡ Done in 6ms
 // Chismoeti · lector privado del blog guardado en Dropbox.
 // Deploy with Verify JWT disabled. This function validates the Supabase session itself.
 const ALLOWED_ORIGINS = new Set([
@@ -50,7 +55,7 @@ async function supa(path: string, init: RequestInit = {}, bearer?: string) {
   const headers = new Headers(init.headers);
   const key = bearer || c.service;
   headers.set("apikey", bearer ? c.anon : c.service);
-  headers.set("Authorization", "Bearer " + key);
+  if (!key.startsWith("sb_")) headers.set("Authorization", "Bearer " + key);
   headers.set("Content-Type", "application/json");
   const response = await fetch(c.url + path, { ...init, headers });
   if (!response.ok) throw new ApiError(response.status === 401 ? 401 : 502, "No pude validar el acceso al blog.");
