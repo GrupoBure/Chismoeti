@@ -244,6 +244,12 @@ footer{padding:28px 0 10px;color:var(--muted);text-align:center;font-size:13px}
 @media(max-width:560px){.gallery-preview-grid,.profile-gallery{grid-template-columns:repeat(3,1fr)}}
 
 </style>
+<style>
+.primary-cta{display:grid;grid-template-columns:minmax(0,1fr);gap:16px;align-items:start}
+.primary-cta #sessionInfo{overflow-wrap:anywhere}
+.primary-cta .profile-actions{display:flex;flex-wrap:wrap;align-items:center;gap:10px}
+@media(max-width:560px){.primary-cta .profile-actions>.btn{flex:1 1 140px;text-align:center}}
+</style>
 </head>
 <body>
 <div class="container">
@@ -268,7 +274,7 @@ footer{padding:28px 0 10px;color:var(--muted);text-align:center;font-size:13px}
       <p id="ctaText">Entra con tu correo para crear o editar únicamente tu propia ficha.</p>
       <div id="sessionInfo" class="small" style="margin-top:8px"></div>
     </div>
-    <div style="display:flex;gap:10px;flex-wrap:wrap;justify-content:flex-end">
+    <div class="profile-actions">
       <button class="btn big" id="addBtn">✉️ Entrar con mi correo</button>
       <button class="btn secondary" id="meetingBtn" type="button" style="display:none">🍽️ Para la reunión</button>
       <button class="btn secondary" id="logoutBtn" style="display:none">Cerrar sesión</button>
