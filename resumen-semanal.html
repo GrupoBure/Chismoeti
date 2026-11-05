@@ -23,7 +23,13 @@ main{max-width:1030px;margin:26px auto;padding:0 18px}.back{display:inline-block
 .arcade-target img{height:64px;width:auto;max-width:100%;object-fit:contain;display:block;margin:auto}
 .arcade-target.hit{visibility:hidden;pointer-events:none}
 .arcade-burst{position:fixed;pointer-events:none;z-index:1;width:8px;height:8px;background:#ffe26d;border-radius:2px}
-</style></head><body>
+</style><style>
+.week-highlights{display:grid;gap:12px;margin:16px 0 24px;padding-left:24px;max-width:76ch}
+.week-highlights li{padding-left:3px;line-height:1.55}
+.week-highlights a{color:inherit;text-decoration:none}
+.week-highlights a:hover,.week-highlights a:focus-visible{text-decoration:underline;color:var(--teal)}
+</style>
+</head><body>
 <main><a class="back" href="./index.html">← Volver a Chismoeti</a><div class="paper">
 <header class="masthead"><div class="eyebrow">Generación E-6 · 1997–2000 · Solo registrados</div><h1>El blog del Chismoeti 📰</h1><p class="muted">Una semana, varios chismes. Lo que pasó de verdad, contado como hablamos nosotros. 😂</p></header>
 <div id="status" class="notice" role="status">🔒 Comprobando tu sesión y tu perfil…</div>
@@ -118,11 +124,29 @@ function render(){
    days.get(post.fecha).push(post);
   }
   add(group,'h2','Semana del '+dateFmt(week),'section-title');
-  const overview=articles.map(({texto})=>{
-   const firstParagraph=texto.split(/\n\s*\n/,1)[0];
-   return firstParagraph.match(/^.*?[.!?](?=\s|$)/)?.[0]||firstParagraph;
-  }).join(' ');
-  add(group,'p',overview);
+  add(group,'p','El chisme de un vistazo. Pícale al que te pique la curiosidad. 👀');
+  const highlights=make('ul');
+  highlights.className='week-highlights';
+  const editorialHighlights=week==='2026-11-02'?[
+   {date:'2026-11-05',text:'🤖 Meta volvió a la conversación. Kael ya le reservó silla… y le pidió COOL.'},
+   {date:'2026-11-05',text:'🍻 Paty reveló su diplomado cervecero. Iván se ofreció a impartir la parte de tomársela.'},
+   {date:'2026-11-05',text:'🐾 Mascotas, venados y un pez con reemplazo secreto. El pase de lista se salió de control.'},
+   {date:'2026-11-04',text:'🌵 Del bonsái y el cactus al podcast: la banda pasó del desahogo al casting.'},
+   {date:'2026-11-04',text:'❤️ Marvin abrió el corazón contando los desayunos y los cuidados para su mamá.'},
+   {date:'2026-11-04',text:'🔥 El despacho conTABLE y el expediente del Pacífico. Aquí nadie deja enfriar el remate.'},
+   {date:'2026-11-03',text:'📸 Fotos de antes y el Gran Carnal: “¿quién me dio COOL?”. Ya traían vigilancia vecinal.'}
+  ].filter(item=>days.has(item.date)):Array.from(days,([date,entries])=>({
+   date,text:dateFmt(date)+' · '+entries.map(entry=>entry.titulo).join(' · ')
+  }));
+  for(const item of editorialHighlights){
+   const bullet=make('li');
+   const link=make('a');
+   link.href='#dia-'+item.date;
+   link.textContent=item.text;
+   link.onclick=()=>{const target=document.getElementById('dia-'+item.date);if(target)target.open=true;};
+   bullet.append(link);highlights.append(bullet);
+  }
+  group.append(highlights);
   add(group,'h3','Detalles por día');
   for(const [date,entries] of days){
    const day=make('details');day.className='blog-day';day.id='dia-'+date;
