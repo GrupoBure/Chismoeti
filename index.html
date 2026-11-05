@@ -270,6 +270,7 @@ footer{padding:28px 0 10px;color:var(--muted);text-align:center;font-size:13px}
     </div>
     <div style="display:flex;gap:10px;flex-wrap:wrap;justify-content:flex-end">
       <button class="btn big" id="addBtn">✉️ Entrar con mi correo</button>
+      <button class="btn secondary" id="meetingBtn" type="button" style="display:none">🍽️ Para la reunión</button>
       <button class="btn secondary" id="logoutBtn" style="display:none">Cerrar sesión</button>
       <a class="btn secondary" href="./album.html" style="text-decoration:none;display:inline-flex;align-items:center;justify-content:center">📖 Álbum de recuerdos</a>
       <a class="btn secondary" href="./resumen-semanal.html" style="text-decoration:none;display:inline-flex;align-items:center;justify-content:center">📰 Blog del Chismoeti</a>
@@ -1234,6 +1235,7 @@ async function refreshAuthState() {
 }
 
 function updateAuthUI() {
+  document.getElementById("meetingBtn").style.display = currentUser && ownProfile ? "" : "none";
   if (!currentUser) {
     ctaTitle.textContent = "¿Todavía no te has presentado? 👋";
     ctaText.textContent = "Entra con tu correo para crear tu ficha o editar la que ya es tuya.";
@@ -1792,6 +1794,158 @@ document.addEventListener("keydown", e => {
 });
 
 loadProfiles();
+</script>
+
+<dialog id="meetingDialog" style="width:min(680px,94vw);max-height:90vh;border:1px solid #cddce5;border-radius:18px;padding:20px;color:#172e43;background:#fffdf7">
+  <form method="dialog" style="text-align:right"><button class="btn secondary">Cerrar</button></form>
+  <h2>🍽️ Para la reunión</h2>
+  <p id="meetingName"></p>
+  <p id="meetingStatus" role="status"></p>
+  <form id="meetingForm">
+    <fieldset id="meetingFields" style="border:0;padding:0;margin:0">
+      <label>¿Podrás asistir?
+        <select id="meetingAttendance"><option value="">Aún no sé</option><option value="yes">Sí voy</option><option value="no">No voy</option></select>
+      </label>
+      <p><label>Comentario privado (opcional)<br><textarea id="meetingComment" maxlength="500" rows="3" style="width:100%"></textarea></label></p>
+      <h3>¿Qué vas a llevar?</h3>
+      <div id="meetingItems"></div>
+      <button type="button" class="btn secondary" id="meetingAdd">Agregar artículo</button>
+      <button type="submit" class="btn">Guardar mi respuesta</button>
+    </fieldset>
+  </form>
+  <hr>
+  <h3>Lista del grupo</h3>
+  <button class="btn secondary" type="button" id="meetingPreview">Previsualizar lista</button>
+  <button class="btn secondary" type="button" id="meetingDownload">Descargar CSV</button>
+  <div id="meetingList" aria-live="polite"></div>
+</dialog>
+<script>
+(() => {
+  const get = id => document.getElementById(id);
+  const dialog = get("meetingDialog");
+  const items = get("meetingItems");
+  const fields = get("meetingFields");
+  const status = get("meetingStatus");
+  const attendance = get("meetingAttendance");
+  const comment = get("meetingComment");
+  const list = get("meetingList");
+  let owner = null;
+  let generation = 0;
+
+  function addItem(value = "", focus = false) {
+    if (items.children.length >= 30) return;
+    const row = document.createElement("div");
+    row.style.cssText = "display:flex;gap:8px;margin:8px 0";
+    const input = document.createElement("input");
+    input.style.cssText = "flex:1;min-width:0";
+    input.placeholder = "Ej. Hielo";
+    input.setAttribute("aria-label", "Artículo");
+    input.maxLength = 100;
+    input.value = value;
+    const remove = document.createElement("button");
+    remove.type = "button";
+    remove.className = "btn secondary";
+    remove.textContent = "Quitar";
+    remove.onclick = () => row.remove();
+    row.append(input, remove);
+    items.append(row);
+    if (focus) input.focus();
+  }
+
+  get("meetingBtn").onclick = async () => {
+    if (!currentUser || !ownProfile || dialog.open) return;
+    const run = ++generation;
+    owner = currentUser.id;
+    get("meetingName").textContent = ownProfile.nombre;
+    fields.disabled = true;
+    attendance.value = "";
+    comment.value = "";
+    items.replaceChildren();
+    list.replaceChildren();
+    status.textContent = "Cargando tu respuesta…";
+    dialog.showModal();
+    const {data, error} = await client.from("primera_reunion_respuestas")
+      .select("asistencia,comentario,articulos").eq("user_id", owner).maybeSingle();
+    if (run !== generation || !dialog.open) return;
+    if (error) {
+      status.textContent = "No se pudo cargar tu respuesta. Cierra y vuelve a abrir.";
+      return;
+    }
+    attendance.value = data?.asistencia == null ? "" : data.asistencia ? "yes" : "no";
+    comment.value = data?.comentario || "";
+    (data?.articulos?.length ? data.articulos : [""]).forEach(value => addItem(value));
+    fields.disabled = false;
+    status.textContent = "";
+  };
+
+  get("meetingAdd").onclick = () => addItem("", true);
+  get("meetingForm").onsubmit = async event => {
+    event.preventDefault();
+    if (fields.disabled || currentUser?.id !== owner) return;
+    const run = generation;
+    fields.disabled = true;
+    status.textContent = "Guardando…";
+    const {error} = await client.from("primera_reunion_respuestas").upsert({
+      user_id: owner,
+      asistencia: attendance.value ? attendance.value === "yes" : null,
+      comentario: comment.value.trim() || null,
+      articulos: Array.from(items.querySelectorAll("input"), input => input.value.trim()).filter(Boolean)
+    });
+    if (run !== generation || !dialog.open) return;
+    fields.disabled = false;
+    status.textContent = error ? "No se pudo guardar. Intenta de nuevo." : "✅ Respuesta guardada.";
+    if (!error && list.childElementCount) get("meetingPreview").click();
+  };
+
+  const label = value => value == null ? "Pendiente" : value ? "Sí va" : "No va";
+  async function groupRows() {
+    if (!dialog.open || currentUser?.id !== owner) return null;
+    const run = generation;
+    const {data,error} = await client.rpc("primera_reunion_lista");
+    if (run !== generation || !dialog.open || currentUser?.id !== owner) return null;
+    if (error) {
+      list.textContent = "No se pudo consultar la lista. Intenta de nuevo.";
+      return null;
+    }
+    return data || [];
+  }
+
+  get("meetingPreview").onclick = async () => {
+    const rows = await groupRows();
+    if (!rows) return;
+    list.replaceChildren();
+    for (const [title, value] of [["Sí van",true],["No van",false],["Pendientes",null]]) {
+      const group = rows.filter(row => row.asistencia === value);
+      const heading = document.createElement("h4");
+      heading.textContent = title + " · " + group.length;
+      const entries = document.createElement("ul");
+      for (const row of group) {
+        const entry = document.createElement("li");
+        entry.textContent = row.nombre + (row.articulos?.length ? " — " + row.articulos.join(", ") : "");
+        entries.append(entry);
+      }
+      list.append(heading, entries);
+    }
+  };
+
+  get("meetingDownload").onclick = async () => {
+    const rows = await groupRows();
+    if (!rows) return;
+    const cell = value => {
+      const text = String(value ?? "");
+      return '"' + (/^\s*[=+@-]|^[\t\r\n]/.test(text) ? "'" : "") + text.replaceAll('"','""') + '"';
+    };
+    const data = [["Nombre","Asistencia","Artículo"], ...rows.flatMap(row =>
+      (row.articulos?.length ? row.articulos : [""]).map(item => [row.nombre,label(row.asistencia),item]))];
+    const url = URL.createObjectURL(new Blob(["\ufeff", data.map(row => row.map(cell).join(",")).join("\r\n")],
+      {type:"text/csv;charset=utf-8"}));
+    const link = document.createElement("a");
+    link.href = url;
+    link.download = "Primera-reunion-Chismoeti.csv";
+    link.click();
+    setTimeout(() => URL.revokeObjectURL(url), 1000);
+  };
+})();
 </script>
 </body>
 </html>
