@@ -695,9 +695,12 @@ function coolButtonHtml(profileId) {
 }
 
 async function loadCools() {
-  const { data, error } = await client
+  let { data, error } = await client
     .from("cools")
-    .select("perfil_id, from_user_id");
+    .select("perfil_id, from_user_id, created_at");
+  if (error && /created_at/.test(error.message || "")) {
+    ({ data, error } = await client.from("cools").select("perfil_id, from_user_id"));
+  }
 
   if (error) {
     console.error("Error leyendo COOLs:", error);
@@ -1271,11 +1274,22 @@ function updateAuthUI() {
       const summary = document.createElement("summary");
       summary.textContent = "Ver quién me dio COOL";
       const list = document.createElement("ul");
-      for (const userId of new Set(received.map(row => row.from_user_id))) {
-        const profile = byUser.get(userId);
+      const dateFormat = new Intl.DateTimeFormat("es-MX", {
+        dateStyle: "medium", timeZone: "America/Mexico_City"
+      });
+      const seen = new Set();
+      received.sort((a, b) => (Date.parse(b.created_at) || 0) - (Date.parse(a.created_at) || 0));
+      for (const row of received) {
+        if (seen.has(row.from_user_id)) continue;
+        seen.add(row.from_user_id);
+        const profile = byUser.get(row.from_user_id);
         const item = document.createElement("li");
         item.textContent = profile?.nombre || profile?.apodo || "Compañero sin perfil visible";
         if (profile?.grupo) item.textContent += " · Grupo " + profile.grupo;
+        const timestamp = Date.parse(row.created_at);
+        item.textContent += Number.isFinite(timestamp)
+          ? " · " + dateFormat.format(timestamp)
+          : " · Fecha no disponible";
         list.append(item);
       }
       details.append(summary, list);
