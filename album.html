@@ -271,6 +271,21 @@ input,select,textarea{width:100%;padding:11px 12px;border:1px solid #cbd5e1;bord
     background-color:#fffaf0;
   }
 }
+
+/* Fit both photo rows inside the actual PageFlip sheet, including owner tools. */
+@media(min-width:701px){
+ .flip-page .page-content{height:100%;min-height:0;display:flex;flex-direction:column}
+ .flip-page .page-content>.page-title{flex:0 0 auto;margin-bottom:10px}
+ .flip-page .page-content>.grid{flex:1;min-height:0;grid-template-columns:repeat(2,minmax(0,1fr));grid-template-rows:repeat(2,minmax(0,1fr));gap:10px}
+ .flip-page .mem{display:flex;flex-direction:column;min-width:0;min-height:0;transform:none}
+ .flip-page .photo-open{flex:1 1 0;min-height:0;overflow:hidden}
+ .flip-page .mem img{width:100%;height:100%;max-height:none;aspect-ratio:auto;object-fit:contain;background:#f1f5f9}
+ .flip-page .cap{flex:0 0 auto;line-height:1.2;max-height:2.4em}
+ .flip-page .meta{flex:0 0 auto;flex-wrap:nowrap;font-size:10px;line-height:1.2}
+ .flip-page .meta span{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+ .flip-page .who,.flip-page .mine{flex:0 0 auto}
+ .flip-page .mine{margin-top:6px}
+}
 </style>
 </head>
 <body>
@@ -384,7 +399,7 @@ function apply(f){
   renderBook(0);
 }
 function card(p,i){const mine=user&&p.user_id===user.id;return `<article class="mem" style="--r:${[-1.2,.8,-.5,1.1][i%4]}deg"><button class="photo-open" type="button" data-view="${p.id}"><img src="${esc(p.foto_url)}" alt="Recuerdo" loading="lazy"></button>${p.descripcion?`<div class="cap">${esc(p.descripcion)}</div>`:""}<div class="meta">${p.fecha_recuerdo?`<span>📅 ${esc(fmtDate(p.fecha_recuerdo))}</span>`:`<span>📌 ${esc(fmtCreated(p.created_at))}</span>`}${p.categoria?`<span>🏷️ ${esc(p.categoria)}</span>`:""}</div><div class="who">${p.importado_por==="kael"?'<span class="kael-upload">😎 Subida por Kael</span>':`Subió: ${esc(p.uploader)}`}</div>${mine?`<div class="mine"><button class="mini" data-edit="${p.id}" type="button">✏️ Editar</button><button class="mini del" data-del="${p.id}" type="button">🗑️ Borrar</button></div>`:""}</article>`}
-function page(items,title){return items.length?`<div class="page-title">${title}</div><div class="grid">${items.map(card).join("")}</div>`:`<div class="page-title">${title}</div><div class="empty"><div><div style="font-size:42px">📷</div><strong>Aún no hay fotos aquí.</strong><br>Este espacio espera un buen chisme.</div></div>`}
+function page(items,title){return items.length?`<div class="page-content"><div class="page-title">${title}</div><div class="grid">${items.map(card).join("")}</div></div>`:`<div class="page-title">${title}</div><div class="empty"><div><div style="font-size:42px">📷</div><strong>Aún no hay fotos aquí.</strong><br>Este espacio espera un buen chisme.</div></div>`}
 function bind(){
   document.querySelectorAll("[data-edit]").forEach(b=>b.onclick=()=>openEdit(+b.dataset.edit));
   document.querySelectorAll("[data-del]").forEach(b=>b.onclick=()=>removePhoto(+b.dataset.del));
