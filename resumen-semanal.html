@@ -128,6 +128,10 @@ function render(){
   const highlights=make('ul');
   highlights.className='week-highlights';
   const editorialHighlights=week==='2026-11-02'?[
+   {date:'2026-11-05',text:'🎙️ Corte 20:11: Kael les contesta a Salvador, Jess, Gaby, Felipe y Vic. Meta también tiene recado.'},
+   {date:'2026-11-05',text:'💋 Fer mandó un beso y terminó recordando por qué Glo no lo dejaba copiar. Hay interrogatorio y stickers.'},
+   {date:'2026-11-05',text:'🐬 Fer se presentó desde la costa; Selene llegó con foto y Hasbulla apareció tamaño real.'},
+   {date:'2026-11-05',text:'📅 Viernes 6 y domingo 15: dos planes que se cruzaron. Paty ya tenía bar de contingencia.'},
    {date:'2026-11-05',text:'🤖 Meta volvió a la conversación. Kael ya le reservó silla… y le pidió COOL.'},
    {date:'2026-11-05',text:'🍻 Paty reveló su diplomado cervecero. Iván se ofreció a impartir la parte de tomársela.'},
    {date:'2026-11-05',text:'🐾 Mascotas, venados y un pez con reemplazo secreto. El pase de lista se salió de control.'},
@@ -150,6 +154,7 @@ function render(){
   add(group,'h3','Detalles por día');
   for(const [date,entries] of days){
    const day=make('details');day.className='blog-day';day.id='dia-'+date;
+   if(date===posts[0]?.fecha)day.open=true;
    const weekday=new Date(date+'T12:00:00Z').toLocaleDateString('es-MX',{weekday:'long',timeZone:'UTC'});
    add(day,'summary',weekday[0].toUpperCase()+weekday.slice(1)+' '+dateFmt(date));
    for(const post of entries){
@@ -171,7 +176,7 @@ function renderPost(post,photos){
    const article=make('article');article.className='story blog-post';article.style.padding='20px 0 25px';
    const head=make('div');
    const tag=add(head,'span',post.categoria.toUpperCase(),'pill');
-   add(head,'span',' · '+dateFmt(post.fecha),'date');
+   add(head,'span',' · '+dateFmt(post.fecha)+(post.hora?' · Hasta las '+post.hora+' h':''),'date');
    const title=add(article,'h3',post.titulo);title.style.fontSize='clamp(21px,3.4vw,29px)';title.style.fontFamily='Georgia,serif';
    article.insertBefore(head,title);
    add(article,'p',post.texto);
@@ -389,8 +394,8 @@ async function start(){
   const manifest=await (await callApi('manifest')).json();
   posts=(manifest.posts||[]).map(post=>({
    fecha:post.date,semana_inicio:post.week_start,titulo:post.title,categoria:post.category,
-   texto:post.text,orden:post.order,photos:post.photos||[],reactions:post.reactions||[]
-  })).sort((a,b)=>b.fecha.localeCompare(a.fecha)||a.orden-b.orden);
+   texto:post.text,orden:post.order,hora:post.time||'',photos:post.photos||[],reactions:post.reactions||[]
+  })).sort((a,b)=>b.fecha.localeCompare(a.fecha)||b.hora.localeCompare(a.hora)||b.orden-a.orden);
   status('✅ Acceso exclusivo para compañeros registrados · '+posts.length+' entradas publicadas.');
   if(!posts.length){add($('issues'),'p','Todavía no hay entradas en el blog.');$('issues').hidden=false}
   else render();
