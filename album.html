@@ -61,7 +61,7 @@ body{margin:0;font-family:system-ui,-apple-system,Segoe UI,Roboto,Arial,sans-ser
 .mem{background:white;border:1px solid #e5e7eb;border-radius:10px;padding:7px;box-shadow:0 5px 10px rgba(15,23,42,.08);transform:rotate(var(--r,0deg));min-height:0}
 .mem img{width:100%;aspect-ratio:4/3;max-height:145px;object-fit:cover;border-radius:7px;background:#e2e8f0;display:block}
 .cap{font-family:"Comic Sans MS","Bradley Hand",cursive;color:#334155;font-size:12px;line-height:1.2;margin-top:5px;word-break:break-word;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
-.meta{display:flex;gap:8px;flex-wrap:wrap;font-size:11px;color:#64748b;margin-top:5px} .who{font-size:11px;color:#0f766e;font-weight:800;margin-top:5px}
+.meta{display:flex;gap:8px;flex-wrap:wrap;font-size:11px;color:#64748b;margin-top:5px} .kael-upload{display:inline-flex;align-items:center;gap:5px;background:#f1ebff;color:#583487;border:1px solid #c4aff0;border-radius:20px;padding:4px 8px}.who{font-size:11px;color:#0f766e;font-weight:800;margin-top:5px}
 .mine{display:flex;gap:6px;margin-top:7px} .mini{border:0;border-radius:8px;padding:6px 8px;font-size:11px;font-weight:800;cursor:pointer} .mini.del{background:#fee2e2;color:#991b1b}
 .empty{min-height:410px;display:grid;place-items:center;text-align:center;color:#94a3b8}
 .indicator{text-align:center;margin:12px 0;color:#475569;font-weight:800}
@@ -328,7 +328,7 @@ const pageSize=()=>isMobileAlbum()?2:8;
 function fmtDate(v){if(!v)return"";const[y,m,d]=v.split("-").map(Number);return new Intl.DateTimeFormat("es-MX",{year:"numeric",month:"short",day:"numeric"}).format(new Date(Date.UTC(y,m-1,d)))}
 function fmtCreated(v){try{return new Intl.DateTimeFormat("es-MX",{dateStyle:"medium"}).format(new Date(v))}catch{return""}}
 async function auth(){const{data:{session}}=await client.auth.getSession();user=session?.user||null;profile=null;if(user){const{data}=await client.from("perfiles").select("id,nombre,user_id").eq("user_id",user.id).maybeSingle();profile=data||null}$("authNote").classList.toggle("hidden",!!user);$("form").querySelectorAll("input,textarea,select,button").forEach(x=>x.disabled=!user)}
-async function load(){const{data,error}=await client.from("album_fotos").select("id,created_at,user_id,perfil_id,foto_url,descripcion,categoria,fecha_recuerdo").order("created_at",{ascending:true});photos=error?[]:(data||[]);const ids=[...new Set(photos.map(x=>x.user_id).filter(Boolean))];let names={};if(ids.length){const{data:p}=await client.from("perfiles").select("user_id,nombre").in("user_id",ids);for(const r of(p||[]))names[r.user_id]=r.nombre}photos=photos.map(p=>({...p,uploader:names[p.user_id]||"Compañero/a"}));apply(filter)}
+async function load(){const{data,error}=await client.from("album_fotos").select("id,created_at,user_id,perfil_id,foto_url,descripcion,categoria,fecha_recuerdo,importado_por,archivo_origen,sha256_origen").order("created_at",{ascending:true});photos=error?[]:(data||[]);const ids=[...new Set(photos.map(x=>x.user_id).filter(Boolean))];let names={};if(ids.length){const{data:p}=await client.from("perfiles").select("user_id,nombre").in("user_id",ids);for(const r of(p||[]))names[r.user_id]=r.nombre}photos=photos.map(p=>({...p,uploader:p.importado_por==="kael"?"😎 Kael":(names[p.user_id]||"Compañero/a")}));apply(filter)}
 function renderFilters(){$("filters").innerHTML=["Todas","Secundaria","Reencuentro","Grupo","Otros"].map(c=>`<button type="button" class="filter ${c===filter?"active":""}" data-f="${c}">${c}</button>`).join("");$("filters").querySelectorAll("[data-f]").forEach(b=>b.onclick=()=>apply(b.dataset.f))}
 function buildSpreads(){
   const groups=new Map();
@@ -383,7 +383,7 @@ function apply(f){
   buildSpreads();
   renderBook(0);
 }
-function card(p,i){const mine=user&&p.user_id===user.id;return `<article class="mem" style="--r:${[-1.2,.8,-.5,1.1][i%4]}deg"><button class="photo-open" type="button" data-view="${p.id}"><img src="${esc(p.foto_url)}" alt="Recuerdo" loading="lazy"></button>${p.descripcion?`<div class="cap">${esc(p.descripcion)}</div>`:""}<div class="meta">${p.fecha_recuerdo?`<span>📅 ${esc(fmtDate(p.fecha_recuerdo))}</span>`:`<span>📌 ${esc(fmtCreated(p.created_at))}</span>`}${p.categoria?`<span>🏷️ ${esc(p.categoria)}</span>`:""}</div><div class="who">Subió: ${esc(p.uploader)}</div>${mine?`<div class="mine"><button class="mini" data-edit="${p.id}" type="button">✏️ Editar</button><button class="mini del" data-del="${p.id}" type="button">🗑️ Borrar</button></div>`:""}</article>`}
+function card(p,i){const mine=user&&p.user_id===user.id;return `<article class="mem" style="--r:${[-1.2,.8,-.5,1.1][i%4]}deg"><button class="photo-open" type="button" data-view="${p.id}"><img src="${esc(p.foto_url)}" alt="Recuerdo" loading="lazy"></button>${p.descripcion?`<div class="cap">${esc(p.descripcion)}</div>`:""}<div class="meta">${p.fecha_recuerdo?`<span>📅 ${esc(fmtDate(p.fecha_recuerdo))}</span>`:`<span>📌 ${esc(fmtCreated(p.created_at))}</span>`}${p.categoria?`<span>🏷️ ${esc(p.categoria)}</span>`:""}</div><div class="who">${p.importado_por==="kael"?'<span class="kael-upload">😎 Subida por Kael</span>':`Subió: ${esc(p.uploader)}`}</div>${mine?`<div class="mine"><button class="mini" data-edit="${p.id}" type="button">✏️ Editar</button><button class="mini del" data-del="${p.id}" type="button">🗑️ Borrar</button></div>`:""}</article>`}
 function page(items,title){return items.length?`<div class="page-title">${title}</div><div class="grid">${items.map(card).join("")}</div>`:`<div class="page-title">${title}</div><div class="empty"><div><div style="font-size:42px">📷</div><strong>Aún no hay fotos aquí.</strong><br>Este espacio espera un buen chisme.</div></div>`}
 function bind(){
   document.querySelectorAll("[data-edit]").forEach(b=>b.onclick=()=>openEdit(+b.dataset.edit));
@@ -672,7 +672,8 @@ function openViewer(id){
   if(p.categoria) meta.push("🏷️ "+p.categoria);
 
   $("viewerMeta").textContent=meta.join("  ·  ");
-  $("viewerOwner").textContent="Subió: "+(p.uploader||"Compañero/a");
+  $("viewerOwner").textContent=p.importado_por==="kael"?"😎 Subida por Kael · Puedes editarla desde la cuenta que administra este recuerdo.":"Subió: "+(p.uploader||"Compañero/a");
+  $("viewerOwner").classList.toggle("kael-upload",p.importado_por==="kael");
   const mine=!!(user&&p.user_id===user.id);
   $("viewerTools").classList.toggle("show",mine);
   $("viewerTools").dataset.id=mine?String(p.id):"";
