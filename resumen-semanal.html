@@ -188,7 +188,7 @@ function renderPost(post,photos){
      const bubble=make('div');bubble.className='chat-bubble';
      const speaker=reaction.speaker||'Del chat';
      const speakerLabel=add(bubble,'strong',speaker);
-     if(/^Kael(?:\\s|$|[→:·])/i.test(speaker.trim())){
+     if(/^Kael(?:\s|$|[→:·])/i.test(speaker.trim())){
       bubble.classList.add('kael-bubble');
       const avatar=make('span');avatar.className='kael-avatar';avatar.textContent='😎';avatar.setAttribute('aria-hidden','true');
       speakerLabel.prepend(avatar);
