@@ -12,7 +12,7 @@ main{max-width:1030px;margin:26px auto;padding:0 18px}.back{display:inline-block
 [hidden]{display:none!important}@media(max-width:680px){main{margin:0;padding:0}.paper{border-radius:0;padding:18px}.stats{grid-template-columns:repeat(2,1fr)}.columns{grid-template-columns:1fr}.gallery{grid-template-columns:repeat(2,1fr)}.figure img{height:145px}.chat-reaction{grid-template-columns:minmax(0,1fr) 72px}.chat-reaction img{width:70px;height:70px}}
 .blog-week,.blog-day{border:1px solid var(--line);border-radius:12px;padding:12px;margin-top:12px}.blog-week>summary,.blog-day>summary{cursor:pointer;font-weight:800;color:var(--teal)}.blog-week>summary{font-size:1.15rem}.blog-post>p{white-space:pre-line}
 .sticker-reactions{display:flex;flex-wrap:wrap;align-items:center;gap:10px;margin:10px 0 14px}.sticker-reactions img{display:block;width:66px;height:66px;object-fit:contain}.sticker-reactions img:not([src]){display:none}
-.chat-reactions{display:grid;gap:12px;margin:16px 0}.chat-reaction{display:grid;grid-template-columns:minmax(0,1fr) 92px;gap:12px;align-items:end;max-width:650px}.chat-bubble{background:#e8f7ef;border:1px solid #b9dfcf;border-radius:14px 14px 4px 14px;padding:10px 13px;box-shadow:0 3px 10px #143d5f0c}.chat-bubble strong{display:block;color:var(--teal);font-size:12px;margin-bottom:3px}.chat-bubble p{margin:0;white-space:pre-line;line-height:1.4}.chat-reaction img{display:block;width:88px;height:88px;object-fit:contain}.chat-reaction img:not([src]){visibility:hidden}
+.chat-reactions{display:grid;gap:12px;margin:16px 0}.chat-reaction{display:grid;grid-template-columns:minmax(0,1fr) 92px;gap:12px;align-items:end;max-width:650px}.chat-bubble{background:#e8f7ef;border:1px solid #b9dfcf;border-radius:14px 14px 4px 14px;padding:10px 13px;box-shadow:0 3px 10px #143d5f0c}.chat-bubble.kael-bubble{background:#f1ebff;border:1px solid #c4aff0;border-left:4px solid #7650b5;border-radius:14px 14px 14px 4px;color:#30234b}.chat-bubble.kael-bubble strong{color:#583487}.kael-avatar{display:inline-flex;align-items:center;justify-content:center;width:27px;height:27px;margin-right:7px;border-radius:50%;background:#6843a0;font-size:17px;vertical-align:middle}.chat-bubble strong{display:block;color:var(--teal);font-size:12px;margin-bottom:3px}.chat-bubble p{margin:0;white-space:pre-line;line-height:1.4}.chat-reaction img{display:block;width:88px;height:88px;object-fit:contain}.chat-reaction img:not([src]){visibility:hidden}
 
 #chisme-arcade{width:min(700px,94vw);max-height:90vh;border:0;border-radius:18px;padding:18px;background:#172335;color:white}
 #chisme-arcade::backdrop{background:#091321ce}
@@ -186,7 +186,13 @@ function renderPost(post,photos){
     for(const reaction of chatReactions){
      const row=make('div');row.className='chat-reaction';
      const bubble=make('div');bubble.className='chat-bubble';
-     add(bubble,'strong',reaction.speaker||'Del chat');
+     const speaker=reaction.speaker||'Del chat';
+     const speakerLabel=add(bubble,'strong',speaker);
+     if(/^Kael(?:\\s|$|[→:·])/i.test(speaker.trim())){
+      bubble.classList.add('kael-bubble');
+      const avatar=make('span');avatar.className='kael-avatar';avatar.textContent='😎';avatar.setAttribute('aria-hidden','true');
+      speakerLabel.prepend(avatar);
+     }
      add(bubble,'p',reaction.message||'');
      const img=make('img');img.alt=reaction.caption||'Sticker de reacción';
      row.append(bubble);thread.append(row);
