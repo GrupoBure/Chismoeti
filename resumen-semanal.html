@@ -128,17 +128,15 @@ function render(){
   const highlights=make('ul');
   highlights.className='week-highlights';
   const editorialHighlights=week==='2026-11-02'?[
-   {date:'2026-11-05',text:'🎙️ Corte 20:11: Kael les contesta a Salvador, Jess, Gaby, Felipe y Vic. Meta también tiene recado.'},
-   {date:'2026-11-05',text:'💋 Fer mandó un beso y terminó recordando por qué Glo no lo dejaba copiar. Hay interrogatorio y stickers.'},
-   {date:'2026-11-05',text:'🐬 Fer se presentó desde la costa; Selene llegó con foto y Hasbulla apareció tamaño real.'},
-   {date:'2026-11-05',text:'📅 Viernes 6 y domingo 15: dos planes que se cruzaron. Paty ya tenía bar de contingencia.'},
-   {date:'2026-11-05',text:'🤖 Meta volvió a la conversación. Kael ya le reservó silla… y le pidió COOL.'},
-   {date:'2026-11-05',text:'🍻 Paty reveló su diplomado cervecero. Iván se ofreció a impartir la parte de tomársela.'},
-   {date:'2026-11-05',text:'🐾 Mascotas, venados y un pez con reemplazo secreto. El pase de lista se salió de control.'},
-   {date:'2026-11-04',text:'🌵 Del bonsái y el cactus al podcast: la banda pasó del desahogo al casting.'},
+   {date:'2026-11-06',text:'😎 Corte 14:27: Marvin inauguró la mensajisa y terminó rindiéndose. Kael contesta lo de la rebelión de las IAs.'},
+   {date:'2026-11-06',text:'🎨 Sor Juana tiene autor: Rodd contó la broma que terminó en pintura y exención.'},
+   {date:'2026-11-06',text:'📐 El papá de Karina mandó saludos; Pira contó su suspensión y computación abrió otras quince pestañas.'},
+   {date:'2026-11-06',text:'🕖 Salida de este viernes: el último aviso cambió la hora a las siete. El domingo 15 es otro plan.'},
+   {date:'2026-11-06',text:'📸 Ángel y Mary abrieron los álbumes: uniformes, amigas y otro reencuentro. Hay nueve fotos nuevas en este corte.'},
+   {date:'2026-11-06',text:'🍳 Isabel pidió diez menús y Toño traía mil. También hubo un espacio para reconocer a quienes hacen equipo en casa.'},
+   {date:'2026-11-05',text:'👋 Extra del jueves: Glow, Angie y Alma se presentaron; Bombón pidió lona exclusiva y Kael casi terminó en otra.'},
    {date:'2026-11-04',text:'❤️ Marvin abrió el corazón contando los desayunos y los cuidados para su mamá.'},
-   {date:'2026-11-04',text:'🔥 El despacho conTABLE y el expediente del Pacífico. Aquí nadie deja enfriar el remate.'},
-   {date:'2026-11-03',text:'📸 Fotos de antes y el Gran Carnal: “¿quién me dio COOL?”. Ya traían vigilancia vecinal.'}
+   {date:'2026-11-03',text:'📸 Fotos de antes y el Gran Carnal: “¿quién me dio COOL?”.'}
   ].filter(item=>days.has(item.date)):Array.from(days,([date,entries])=>({
    date,text:dateFmt(date)+' · '+entries.map(entry=>entry.titulo).join(' · ')
   }));
