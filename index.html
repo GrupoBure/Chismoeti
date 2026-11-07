@@ -489,13 +489,21 @@ footer{padding:28px 0 10px;color:var(--muted);text-align:center;font-size:13px}
   <div class="panel" style="width:min(520px,100%)">
     <h2>Entrar a Chismoeti</h2>
     <p style="color:var(--muted);line-height:1.5">
-      Escribe tu correo. Te enviaremos un enlace de acceso; no necesitas recordar otra contraseña.
+      Escribe tu correo para recibir el acceso. Si abres el correo en otro equipo, puedes escribir aquí el código.
     </p>
     <div class="field">
       <label>Correo</label>
       <input id="authEmail" type="email" placeholder="tu@correo.com" autocomplete="email">
     </div>
-    <div id="authMessage" class="notice info" style="display:none;margin-top:14px"></div>
+    <details id="authCodeSection" style="margin-top:14px">
+      <summary>Entrar con código</summary>
+      <div class="field" style="margin-top:10px">
+        <label for="authCode">Código del correo</label>
+        <input id="authCode" type="text" inputmode="numeric" autocomplete="one-time-code">
+      </div>
+      <button type="button" class="btn" id="verifyAuthCodeBtn">Verificar código</button>
+    </details>
+    <div id="authMessage" class="notice info" role="status" style="display:none;margin-top:14px"></div>
     <div class="footer-actions">
       <button type="button" class="btn secondary" id="cancelAuthBtn">Cancelar</button>
       <button type="button" class="btn" id="sendMagicBtn">Enviar enlace de acceso</button>
@@ -561,6 +569,9 @@ const authModal = document.getElementById("authModal");
 const authEmail = document.getElementById("authEmail");
 const authMessage = document.getElementById("authMessage");
 const sendMagicBtn = document.getElementById("sendMagicBtn");
+const authCodeSection = document.getElementById("authCodeSection");
+const authCode = document.getElementById("authCode");
+const verifyAuthCodeBtn = document.getElementById("verifyAuthCodeBtn");
 const logoutBtn = document.getElementById("logoutBtn");
 const ctaTitle = document.getElementById("ctaTitle");
 const ctaText = document.getElementById("ctaText");
@@ -1600,6 +1611,8 @@ function closeForm() {
 function openAuth() {
   authMessage.style.display = "none";
   authEmail.value = "";
+  authCode.value = "";
+  authCodeSection.open = false;
   authModal.classList.add("show");
 }
 
@@ -1643,7 +1656,39 @@ sendMagicBtn.onclick = async () => {
     authMessage.textContent = "No se pudo enviar el acceso: " + error.message;
   } else {
     authMessage.className = "notice ok";
-    authMessage.textContent = "✅ Revisa tu correo. Te enviamos un enlace para entrar a Chismoeti.";
+    authMessage.textContent = "✅ Revisa tu correo. Puedes abrir el enlace o escribir el código en «Entrar con código».";
+  }
+};
+
+verifyAuthCodeBtn.onclick = async () => {
+  const email = authEmail.value.trim();
+  const token = authCode.value.trim();
+  authMessage.style.display = "block";
+  authMessage.className = "notice error";
+
+  if (!email || !/^\d+$/.test(token)) {
+    authMessage.textContent = "Escribe tu correo y el código numérico que recibiste.";
+    return;
+  }
+
+  verifyAuthCodeBtn.disabled = true;
+  authMessage.className = "notice info";
+  authMessage.textContent = "Verificando…";
+  try {
+    const { data, error } = await client.auth.verifyOtp({ email, token, type: "email" });
+    if (error || !data.session) {
+      authMessage.className = "notice error";
+      authMessage.textContent = "No se pudo verificar. Revisa el correo y usa el código más reciente.";
+      return;
+    }
+    authCode.value = "";
+    authMessage.style.display = "none";
+    closeAuth();
+  } catch {
+    authMessage.className = "notice error";
+    authMessage.textContent = "No se pudo conectar. Intenta verificar de nuevo.";
+  } finally {
+    verifyAuthCodeBtn.disabled = false;
   }
 };
 
