@@ -245,6 +245,13 @@ footer{padding:28px 0 10px;color:var(--muted);text-align:center;font-size:13px}
 
 .birthday-panel{margin:18px 0;padding:16px 20px;background:#fff;border:1px solid #bfdbfe;border-radius:16px}
 .birthday-panel h2{margin:0 0 8px;font-size:1.15rem}
+.birthday-celebration{position:relative;isolation:isolate;overflow:hidden;margin:0 0 10px;padding:20px 14px;text-align:center;border-radius:14px;background:linear-gradient(120deg,#312e81,#581c87 65%,#831843);color:#fff}
+.birthday-celebration .birthday-today{position:relative;margin:0;padding:0;background:transparent;color:inherit;font-size:clamp(1.15rem,3vw,1.6rem);text-shadow:0 2px 6px #241043}
+.birthday-celebration small{position:relative;color:#fef3c7}
+.birthday-spark{position:absolute;left:var(--x);top:var(--y);width:4px;height:4px;border-radius:50%;color:var(--color);background:currentColor;opacity:0;pointer-events:none;box-shadow:0 -23px,16px -16px,23px 0,16px 16px,0 23px,-16px 16px,-23px 0,-16px -16px}
+.birthday-celebration:not([hidden]) .birthday-spark{animation:birthday-burst 1.1s ease-out var(--delay) 2 both}
+@keyframes birthday-burst{0%{opacity:0;transform:scale(.15)}25%{opacity:.95}100%{opacity:0;transform:scale(1.75)}}
+@media(prefers-reduced-motion:reduce){.birthday-celebration:not([hidden]) .birthday-spark{animation:none;opacity:.4}}
 .birthday-panel ul{margin:8px 0 0;padding-inline-start:24px}
 .birthday-today{padding:10px 12px;margin:0 0 8px;background:#fef3c7;border-radius:10px;color:#78350f;font-weight:700}
 .view-options{display:flex;gap:8px;align-items:center;margin:10px 0}
@@ -296,7 +303,14 @@ footer{padding:28px 0 10px;color:var(--muted);text-align:center;font-size:13px}
 
   <section class="birthday-panel" aria-labelledby="birthdayTitle">
     <h2 id="birthdayTitle">🎂 Cumpleaños de esta semana</h2>
-    <p class="birthday-today" id="birthdayToday" role="status" hidden></p>
+    <div class="birthday-celebration" id="birthdayCelebration" hidden>
+      <span class="birthday-spark" aria-hidden="true" style="--x:13%;--y:35%;--color:#fde68a;--delay:0s"></span>
+      <span class="birthday-spark" aria-hidden="true" style="--x:87%;--y:38%;--color:#f9a8d4;--delay:.25s"></span>
+      <span class="birthday-spark" aria-hidden="true" style="--x:28%;--y:70%;--color:#67e8f9;--delay:.55s"></span>
+      <span class="birthday-spark" aria-hidden="true" style="--x:75%;--y:72%;--color:#fde68a;--delay:.75s"></span>
+      <p class="birthday-today" id="birthdayToday" role="status"></p>
+      <small>Que caigan los abrazos, el pastel y el chisme del bueno. 🎂</small>
+    </div>
     <div id="birthdayWeek">Cargando cumpleaños…</div>
   </section>
   <div class="toolbar">
@@ -868,7 +882,7 @@ function renderBirthdays() {
   }
   const message = todayNames.length ? "🎉 ¡Feliz cumpleaños, " + todayNames.join(", ") + "!" : "";
   if (todayBox.textContent !== message) todayBox.textContent = message;
-  todayBox.hidden = !message;
+  document.getElementById("birthdayCelebration").hidden = !message;
   weekBox.replaceChildren(list.childElementCount ? list : "Esta semana no hay cumpleaños registrados.");
 }
 
