@@ -841,6 +841,8 @@ function birthdayDays(now) {
   return {today, week};
 }
 
+const confirmedBirthdays = new Map([[24, "11-16"]]);
+
 function renderBirthdays() {
   const {today, week} = birthdayDays(new Date());
   const todayBox = document.getElementById("birthdayToday");
@@ -849,7 +851,7 @@ function renderBirthdays() {
   const list = document.createElement("ul");
   for (const date of week) {
     const key = birthdayKey(date.getUTCDate(), date.getUTCMonth() + 1);
-    const names = profiles.filter(profile => profile.chismografo?.cumpleanos === key)
+    const names = profiles.filter(profile => (profile.chismografo?.cumpleanos || confirmedBirthdays.get(profile.id)) === key)
       .map(profile => profile.nombre).sort((a,b) => a.localeCompare(b, "es-MX"));
     if (!names.length) continue;
     const item = document.createElement("li");
