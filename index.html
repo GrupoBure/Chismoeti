@@ -1819,9 +1819,9 @@ profileModal.addEventListener("click", e => { if(e.target === profileModal) clos
 document.getElementById("search").addEventListener("input", render);
 document.getElementById("nombre").addEventListener("input", updateNameWarning);
 
-document.querySelectorAll(".filter").forEach(b => {
+document.querySelectorAll(".filters [data-group]").forEach(b => {
   b.onclick = () => {
-    document.querySelectorAll(".filter").forEach(x => x.classList.remove("active"));
+    document.querySelectorAll(".filters [data-group]").forEach(x => x.classList.remove("active"));
     b.classList.add("active");
     currentGroup = b.dataset.group;
     render();
