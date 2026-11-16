@@ -243,6 +243,15 @@ footer{padding:28px 0 10px;color:var(--muted);text-align:center;font-size:13px}
 .profile-gallery-item{cursor:pointer}
 @media(max-width:560px){.gallery-preview-grid,.profile-gallery{grid-template-columns:repeat(3,1fr)}}
 
+.birthday-panel{margin:18px 0;padding:16px 20px;background:#fff;border:1px solid #bfdbfe;border-radius:16px}
+.birthday-panel h2{margin:0 0 8px;font-size:1.15rem}
+.birthday-panel ul{margin:8px 0 0;padding-inline-start:24px}
+.birthday-today{padding:10px 12px;margin:0 0 8px;background:#fef3c7;border-radius:10px;color:#78350f;font-weight:700}
+.view-options{display:flex;gap:8px;align-items:center;margin:10px 0}
+.grid.profile-list{grid-template-columns:minmax(0,1fr);gap:10px}
+.profile-list .card{display:grid;grid-template-columns:auto minmax(0,1fr);column-gap:14px;text-align:left}
+.profile-list .avatar{grid-column:1;grid-row:1 / span 5;width:48px;height:48px;margin:0;font-size:18px}
+.profile-list .card > :not(.avatar){grid-column:2;justify-self:start;max-width:100%;overflow-wrap:anywhere}
 </style>
 <style>
 .primary-cta{display:grid;grid-template-columns:minmax(0,1fr);gap:16px;align-items:start}
@@ -285,6 +294,11 @@ footer{padding:28px 0 10px;color:var(--muted);text-align:center;font-size:13px}
 
   <div id="statusBox" class="notice info">Conectando con la base de datos…</div>
 
+  <section class="birthday-panel" aria-labelledby="birthdayTitle">
+    <h2 id="birthdayTitle">🎂 Cumpleaños de esta semana</h2>
+    <p class="birthday-today" id="birthdayToday" role="status" hidden></p>
+    <div id="birthdayWeek">Cargando cumpleaños…</div>
+  </section>
   <div class="toolbar">
     <input id="search" class="search" placeholder="🔎 Buscar por nombre, apodo, trabajo, ciudad..." />
   </div>
@@ -303,6 +317,10 @@ footer{padding:28px 0 10px;color:var(--muted);text-align:center;font-size:13px}
     <button class="filter" data-group="J">Grupo J</button>
   </div>
 
+  <div class="view-options" role="group" aria-label="Vista de perfiles">
+    <button type="button" class="filter active" data-profile-view="grid" aria-pressed="true">Cuadrícula</button>
+    <button type="button" class="filter" data-profile-view="list" aria-pressed="false">Lista</button>
+  </div>
   <div id="loading" class="loading">Cargando perfiles…</div>
   <div id="grid" class="grid"></div>
   <div id="empty" class="empty" style="display:none">No encontré a nadie con ese criterio.</div>
@@ -315,6 +333,14 @@ footer{padding:28px 0 10px;color:var(--muted);text-align:center;font-size:13px}
     <h2 id="formTitle">Agregar mi presentación</h2>
     <form id="profileForm">
       <div class="form-grid">
+        <div class="field full">
+          <label for="birthdayMonth">Cumpleaños (opcional)</label>
+          <div class="view-options">
+            <select id="birthdayDay" aria-label="Día del cumpleaños"><option value="">Día</option></select>
+            <select id="birthdayMonth" aria-label="Mes del cumpleaños"><option value="">Mes</option></select>
+          </div>
+          <small>Se comparte el día y el mes en el calendario de Chismoeti.</small>
+        </div>
         <div class="field">
           <label>Nombre *</label>
           <input id="nombre" required maxlength="100" placeholder="Ej. Víctor" autocomplete="name">
@@ -773,7 +799,72 @@ window.toggleCool = async function(profileId) {
   }
 };
 
+const profileViewButtons = document.querySelectorAll("[data-profile-view]");
+function setProfileView(view) {
+  grid.classList.toggle("profile-list", view === "list");
+  profileViewButtons.forEach(button => {
+    const selected = button.dataset.profileView === view;
+    button.classList.toggle("active", selected);
+    button.setAttribute("aria-pressed", String(selected));
+  });
+}
+try { setProfileView(localStorage.getItem("chismoeti.profileView") === "list" ? "list" : "grid"); } catch {}
+profileViewButtons.forEach(button => button.addEventListener("click", () => {
+  const view = button.dataset.profileView;
+  setProfileView(view);
+  try { localStorage.setItem("chismoeti.profileView", view); } catch {}
+}));
+
+const birthdayDay = document.getElementById("birthdayDay");
+const birthdayMonth = document.getElementById("birthdayMonth");
+const birthdayZone = new Intl.DateTimeFormat("en-CA", {timeZone:"America/Mexico_City", year:"numeric", month:"2-digit", day:"2-digit"});
+const birthdayLabel = new Intl.DateTimeFormat("es-MX", {timeZone:"UTC", weekday:"long", day:"numeric", month:"long"});
+const monthLabel = new Intl.DateTimeFormat("es-MX", {timeZone:"UTC", month:"long"});
+for (let day = 1; day <= 31; day++) birthdayDay.add(new Option(day, day));
+for (let month = 1; month <= 12; month++) {
+  birthdayMonth.add(new Option(monthLabel.format(Date.UTC(2000, month - 1, 1)), month));
+}
+
+function birthdayKey(day, month) {
+  const date = new Date(Date.UTC(2000, month - 1, day));
+  return month >= 1 && month <= 12 && day >= 1 && date.getUTCMonth() === month - 1
+    ? String(month).padStart(2, "0") + "-" + String(day).padStart(2, "0")
+    : null;
+}
+
+function birthdayDays(now) {
+  const parts = Object.fromEntries(birthdayZone.formatToParts(now).map(part => [part.type, part.value]));
+  const today = new Date(Date.UTC(+parts.year, +parts.month - 1, +parts.day));
+  const mondayOffset = (today.getUTCDay() + 6) % 7;
+  const week = Array.from({length:7}, (_, index) =>
+    new Date(Date.UTC(today.getUTCFullYear(), today.getUTCMonth(), today.getUTCDate() - mondayOffset + index)));
+  return {today, week};
+}
+
+function renderBirthdays() {
+  const {today, week} = birthdayDays(new Date());
+  const todayBox = document.getElementById("birthdayToday");
+  const weekBox = document.getElementById("birthdayWeek");
+  const todayNames = [];
+  const list = document.createElement("ul");
+  for (const date of week) {
+    const key = birthdayKey(date.getUTCDate(), date.getUTCMonth() + 1);
+    const names = profiles.filter(profile => profile.chismografo?.cumpleanos === key)
+      .map(profile => profile.nombre).sort((a,b) => a.localeCompare(b, "es-MX"));
+    if (!names.length) continue;
+    const item = document.createElement("li");
+    item.textContent = birthdayLabel.format(date) + " · " + names.join(", ");
+    list.append(item);
+    if (+date === +today) todayNames.push(...names);
+  }
+  const message = todayNames.length ? "🎉 ¡Feliz cumpleaños, " + todayNames.join(", ") + "!" : "";
+  if (todayBox.textContent !== message) todayBox.textContent = message;
+  todayBox.hidden = !message;
+  weekBox.replaceChildren(list.childElementCount ? list : "Esta semana no hay cumpleaños registrados.");
+}
+
 function render() {
+  renderBirthdays();
   const q = document.getElementById("search").value.toLowerCase().trim();
   const filtered = profiles.filter(p => {
     const inGroup = currentGroup === "Todos" || p.grupo === currentGroup;
@@ -1351,12 +1442,14 @@ async function loadProfiles() {
   loading.style.display = "none";
 
   if (error) {
+    document.getElementById("birthdayWeek").textContent = "No pude cargar el calendario.";
     console.error(error);
     showStatus("No pude leer la base de datos: " + error.message, "error");
     return;
   }
 
   profiles = data || [];
+  renderBirthdays();
   showStatus("✅ Conectado a Supabase. Los perfiles que agregues aquí serán compartidos entre todos los dispositivos.", "ok");
 
   await loadCools();
@@ -1560,6 +1653,9 @@ function fillFormFromProfile(p) {
   document.getElementById("dato_curioso").value = p?.dato_curioso || "";
 
   const ch = p?.chismografo || {};
+  const [month, day] = (ch.cumpleanos || "").split("-").map(Number);
+  birthdayDay.value = day || "";
+  birthdayMonth.value = month || "";
   document.getElementById("ch_juntabas").value = ch.juntabas || "";
   document.getElementById("ch_amor_platonico").value = ch.amor_platonico || "";
   document.getElementById("ch_crush_secreto").value = ch.crush_secreto || "";
@@ -1735,6 +1831,12 @@ document.querySelectorAll(".filter").forEach(b => {
 form.addEventListener("submit", async e => {
   e.preventDefault();
 
+  if ((birthdayDay.value || birthdayMonth.value) && !birthdayKey(Number(birthdayDay.value), Number(birthdayMonth.value))) {
+    alert("Elige un día y un mes válidos para tu cumpleaños.");
+    (birthdayMonth.value ? birthdayDay : birthdayMonth).focus();
+    return;
+  }
+
   if (updateNameWarning()) {
     const nombre = document.getElementById("nombre");
     nombre.focus();
@@ -1790,6 +1892,7 @@ form.addEventListener("submit", async e => {
   }
 
   const chismografo = {
+    cumpleanos: birthdayKey(Number(birthdayDay.value), Number(birthdayMonth.value)),
     juntabas: document.getElementById("ch_juntabas").value.trim(),
     amor_platonico: document.getElementById("ch_amor_platonico").value.trim(),
     crush_secreto: document.getElementById("ch_crush_secreto").value.trim(),
@@ -1858,6 +1961,10 @@ document.addEventListener("keydown", e => {
   }
 });
 
+setInterval(() => { if (document.visibilityState === "visible" && profiles.length) renderBirthdays(); }, 60000);
+document.addEventListener("visibilitychange", () => {
+  if (document.visibilityState === "visible" && profiles.length) renderBirthdays();
+});
 loadProfiles();
 </script>
 
