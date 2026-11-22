@@ -29,7 +29,46 @@ main{max-width:1030px;margin:26px auto;padding:0 18px}.back{display:inline-block
 .week-highlights a{color:inherit;text-decoration:none}
 .week-highlights a:hover,.week-highlights a:focus-visible{text-decoration:underline;color:var(--teal)}
 </style>
-</head><body>
+<style>
+main{max-width:1320px}
+.blog-layout{display:grid;grid-template-columns:250px minmax(0,1fr);gap:26px;align-items:start;margin-top:18px}
+.blog-nav{position:sticky;top:16px;border:1px solid var(--line);border-radius:14px;background:#f4f8fa;min-width:0}
+.blog-nav>summary{padding:16px;font-weight:800;color:var(--teal);cursor:pointer}
+.blog-nav-content{max-height:calc(100vh - 115px);overflow:auto;padding:0 14px 16px;scrollbar-width:thin}
+.blog-nav h2{font-size:14px;margin:18px 0 8px;color:#355269}
+.blog-nav a{display:block;padding:9px 10px;border-radius:8px;color:var(--ink);text-decoration:none;font-size:13px;line-height:1.45;overflow-wrap:anywhere}
+.blog-nav a:hover,.blog-nav a:focus-visible{background:#e0eeef;color:#075e57}
+.blog-nav a span{display:block;font-size:11px;color:#64748b;margin-top:3px}
+.blog-nav details{border-top:1px solid var(--line);padding-top:9px;margin-top:9px}
+.blog-nav details summary{font-size:13px;font-weight:750;cursor:pointer;padding:5px 0}
+.blog-feed{min-width:0}
+.blog-feed>.blog-week{margin:0 0 20px;padding:0;border:0}
+.blog-feed .blog-week>.section-title{margin:0 0 12px;font-size:24px}
+.week-highlights{display:flex;flex-wrap:wrap;list-style:none;gap:7px;margin:12px 0 18px;padding:0}
+.week-highlights li{padding:0}
+.week-highlights a{display:block;padding:7px 11px;background:#edf4f6;border:1px solid #d7e5e9;border-radius:99px;font-size:12px}
+.blog-day{background:#fffdf8;padding:14px 16px}
+.blog-day>summary{padding:3px 0;font-size:15px;scroll-margin-top:20px}
+.blog-post{scroll-margin-top:22px}
+.blog-post>p{line-height:1.7;max-width:70ch;color:#344a5e}
+.chat-reactions{gap:16px}
+.chat-reaction{grid-template-columns:minmax(0,1fr) 112px;max-width:100%}
+.chat-reaction img{width:108px;height:108px;filter:drop-shadow(0 3px 3px #18233318)}
+.chat-bubble{padding:13px 15px}
+.blog-post h3{line-height:1.2;overflow-wrap:anywhere}
+@media(max-width:900px){
+.blog-layout{grid-template-columns:minmax(0,1fr);gap:18px}
+.blog-nav{position:static}
+.blog-nav-content{max-height:55vh}
+}
+@media(max-width:680px){
+.chat-reaction{grid-template-columns:minmax(0,1fr) 82px;gap:8px}
+.chat-reaction img{width:80px;height:80px}
+.blog-day{padding:12px}
+.paper{padding:16px}
+.masthead h1{font-size:38px}
+}
+</style></head><body>
 <main><a class="back" href="./index.html">← Volver a Chismoeti</a><div class="paper">
 <header class="masthead"><div class="eyebrow">Generación E-6 · 1997–2000 · Solo registrados</div><h1>El blog del Chismoeti 📰</h1><p class="muted">Una semana, varios chismes. Lo que pasó de verdad, contado como hablamos nosotros. 😂</p></header>
 <div id="status" class="notice" role="status">🔒 Comprobando tu sesión y tu perfil…</div>
@@ -47,6 +86,7 @@ const make=(tag,value,cls)=>{const el=document.createElement(tag);if(value!==und
 const add=(parent,tag,text,cls)=>{const el=make(tag,text,cls);parent.append(el);return el};
 let posts=[];
 const mediaCache=new Map();
+let photoObserver;
 function status(msg){$('status').textContent=msg}
 function guest(msg){status(msg);$('guest').hidden=false}
 const dateFmt=d=>{const [y,m,day]=d.split('-');return day+'/'+m+'/'+y};
@@ -89,30 +129,52 @@ async function mediaUrl(file){
 }
 function showImage(url){$('zoomed').src=url;$('lightbox').showModal()}
 $('closeLightbox').onclick=()=>$('lightbox').close();
+function postAnchor(post){return 'entrada-'+posts.indexOf(post)}
+function storyLink(post){
+ const link=make('a',post.titulo);
+ link.href='#'+postAnchor(post);
+ add(link,'span',dateFmt(post.fecha)+(post.hora?' · '+post.hora:''));
+ link.addEventListener('click',()=>{
+  const day=$('dia-'+post.fecha);
+  if(day)day.open=true;
+ });
+ return link;
+}
 function renderHotTopics(root){
- const topics=posts.filter(post=>['chisme','candente','polémica'].includes(post.categoria));
- if(!topics.length)return;
- const section=make('section');
- section.className='blog-week';
- add(section,'h2','🔥 Temas candentes','section-title');
- add(section,'p','Lo más polémico y lo que prendió el chat.');
- const list=make('ul');
- for(const post of topics){
-  const item=make('li');
-  const link=add(item,'a',post.titulo+' · '+dateFmt(post.fecha));
-  link.href='#dia-'+post.fecha;
-  link.addEventListener('click',()=>{
-   const day=$('dia-'+post.fecha);
-   if(day)day.open=true;
-  });
-  list.append(item);
+ const nav=make('details');nav.className='blog-nav';
+ nav.open=window.matchMedia('(min-width:901px)').matches;
+ add(nav,'summary','☰ Explorar el blog');
+ const content=make('nav');content.className='blog-nav-content';
+ content.setAttribute('aria-label','Navegación del blog');
+ add(content,'h2','Lo último');
+ for(const post of posts.slice(0,5))content.append(storyLink(post));
+ const hot=make('details');
+ add(hot,'summary','🔥 Temas candentes');
+ const byWeek=new Map();
+ for(const post of posts.filter(post=>['chisme','candente','polémica'].includes(post.categoria))){
+  if(!byWeek.has(post.semana_inicio))byWeek.set(post.semana_inicio,[]);
+  byWeek.get(post.semana_inicio).push(post);
  }
- section.append(list);
- root.append(section);
+ for(const [week,entries] of byWeek){
+  const section=make('details');
+  add(section,'summary','Semana del '+dateFmt(week));
+  for(const post of entries)section.append(storyLink(post));
+  hot.append(section);
+ }
+ content.append(hot);
+ const dates=make('details');add(dates,'summary','📅 Buscar por fecha');
+ const days=new Set(posts.map(post=>post.fecha));
+ for(const date of days){
+  const link=add(dates,'a',dateFmt(date));link.href='#dia-'+date;
+  link.onclick=()=>{const day=$('dia-'+date);if(day)day.open=true};
+ }
+ content.append(dates);nav.append(content);root.append(nav);
 }
 function render(){
- const root=$('issues');root.replaceChildren();
+ if(photoObserver)photoObserver.disconnect();
+ const root=$('issues');root.replaceChildren();root.className='blog-layout';
  renderHotTopics(root);
+ const feed=make("div");feed.className="blog-feed";root.append(feed);
  const photos=[];
  const grouped=new Map();
  for(const post of posts){if(!grouped.has(post.semana_inicio))grouped.set(post.semana_inicio,[]);grouped.get(post.semana_inicio).push(post)}
@@ -124,32 +186,17 @@ function render(){
    days.get(post.fecha).push(post);
   }
   add(group,'h2','Semana del '+dateFmt(week),'section-title');
-  add(group,'p','El chisme de un vistazo. Pícale al que te pique la curiosidad. 👀');
-  const highlights=make('ul');
-  highlights.className='week-highlights';
-  const editorialHighlights=week==='2026-11-02'?[
-   {date:'2026-11-06',text:'😎 Corte 14:27: Marvin inauguró la mensajisa y terminó rindiéndose. Kael contesta lo de la rebelión de las IAs.'},
-   {date:'2026-11-06',text:'🎨 Sor Juana tiene autor: Rodd contó la broma que terminó en pintura y exención.'},
-   {date:'2026-11-06',text:'📐 El papá de Karina mandó saludos; Pira contó su suspensión y computación abrió otras quince pestañas.'},
-   {date:'2026-11-06',text:'🕖 Salida de este viernes: el último aviso cambió la hora a las siete. El domingo 15 es otro plan.'},
-   {date:'2026-11-06',text:'📸 Ángel y Mary abrieron los álbumes: uniformes, amigas y otro reencuentro. Hay nueve fotos nuevas en este corte.'},
-   {date:'2026-11-06',text:'🍳 Isabel pidió diez menús y Toño traía mil. También hubo un espacio para reconocer a quienes hacen equipo en casa.'},
-   {date:'2026-11-05',text:'👋 Extra del jueves: Glow, Angie y Alma se presentaron; Bombón pidió lona exclusiva y Kael casi terminó en otra.'},
-   {date:'2026-11-04',text:'❤️ Marvin abrió el corazón contando los desayunos y los cuidados para su mamá.'},
-   {date:'2026-11-03',text:'📸 Fotos de antes y el Gran Carnal: “¿quién me dio COOL?”.'}
-  ].filter(item=>days.has(item.date)):Array.from(days,([date,entries])=>({
-   date,text:dateFmt(date)+' · '+entries.map(entry=>entry.titulo).join(' · ')
-  }));
-  for(const item of editorialHighlights){
-   const bullet=make('li');
-   const link=make('a');
-   link.href='#dia-'+item.date;
-   link.textContent=item.text;
-   link.onclick=()=>{const target=document.getElementById('dia-'+item.date);if(target)target.open=true;};
-   bullet.append(link);highlights.append(bullet);
+  const highlights=make('ul');highlights.className='week-highlights';
+  for(const [date,entries] of days){
+   const item=make('li');
+   const weekday=new Date(date+'T12:00:00Z').toLocaleDateString('es-MX',{weekday:'short',day:'numeric',month:'short',timeZone:'UTC'});
+   const link=add(item,'a',weekday+' · '+entries.length+(entries.length===1?' entrada':' entradas'));
+   link.href='#dia-'+date;
+   link.onclick=()=>{const target=$('dia-'+date);if(target)target.open=true};
+   highlights.append(item);
   }
   group.append(highlights);
-  add(group,'h3','Detalles por día');
+
   for(const [date,entries] of days){
    const day=make('details');day.className='blog-day';day.id='dia-'+date;
    if(date===posts[0]?.fecha)day.open=true;
@@ -160,18 +207,31 @@ function render(){
    }
    group.append(day);
   }
-  root.append(group);
+  feed.append(group);
  }
  root.hidden=false;
- const linkedDay=document.getElementById(location.hash.slice(1));
- if(linkedDay?.classList.contains('blog-day')){
-  linkedDay.open=true;
-  linkedDay.scrollIntoView();
+ const linkedTarget=document.getElementById(location.hash.slice(1));
+ if(linkedTarget){
+  const day=linkedTarget.closest('.blog-day');if(day)day.open=true;
+  linkedTarget.scrollIntoView();
  }
- for(let i=0;i<Math.min(4,photos.length);i++) void loadPhotos(photos);
+ if('IntersectionObserver' in window){
+  const pending=new Map(photos.map(photo=>[photo.img,photo]));
+  photoObserver=new IntersectionObserver(entries=>{
+   for(const entry of entries){
+    if(!entry.isIntersecting)continue;
+    const photo=pending.get(entry.target);
+    photoObserver.unobserve(entry.target);pending.delete(entry.target);
+    if(photo)void loadPhotos([photo]);
+   }
+  },{rootMargin:'250px'});
+  for(const photo of photos)photoObserver.observe(photo.img);
+ }else{
+  for(let i=0;i<Math.min(4,photos.length);i++)void loadPhotos(photos);
+ }
 }
 function renderPost(post,photos){
-   const article=make('article');article.className='story blog-post';article.style.padding='20px 0 25px';
+   const article=make('article');article.id=postAnchor(post);article.className='story blog-post';article.style.padding='20px 0 25px';
    const head=make('div');
    const tag=add(head,'span',post.categoria.toUpperCase(),'pill');
    add(head,'span',' · '+dateFmt(post.fecha)+(post.hora?' · Hasta las '+post.hora+' h':''),'date');
@@ -194,7 +254,7 @@ function renderPost(post,photos){
      add(bubble,'p',reaction.message||'');
      const img=make('img');img.alt=reaction.caption||'Sticker de reacción';
      row.append(bubble);thread.append(row);
-     if(reaction.file){row.append(img);photos.push({img,file:reaction.file,reaction:true});}
+     if(reaction.file){row.append(img);img.loading='lazy';photos.push({img,file:reaction.file,reaction:true});}
      else row.style.gridTemplateColumns='minmax(0,1fr)';
     }
     article.append(thread);
