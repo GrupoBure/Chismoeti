@@ -855,8 +855,8 @@ function birthdayDays(now) {
   return {today, week};
 }
 
-const confirmedBirthdays = new Map([[24, "11-16"], [14, "09-16"]]);
-const birthdaysWithoutProfile = [{ name: "Jonathan Mata", date: "11-12" }];
+const confirmedBirthdays = new Map([[24, "11-16"], [14, "09-16"], [12, "03-14"], [5, "01-27"], [28, "06-02"], [29, "05-09"]]);
+const birthdaysWithoutProfile = [{ name: "Jonathan Mata", date: "11-12" }, { name: "Antonio Trejo", date: "11-17" }, { name: "John Espinoza", date: "01-19" }, { name: "Angie", date: "04-30" }];
 
 function renderBirthdays() {
   const {today, week} = birthdayDays(new Date());
