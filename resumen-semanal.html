@@ -230,6 +230,16 @@ function render(){
   for(let i=0;i<Math.min(4,photos.length);i++)void loadPhotos(photos);
  }
 }
+function editorialSticker(post){
+ if(post.fecha<'2026-11-18')return;
+ const matches=[
+  [/perfume fino/i,'STK-Kael-Perfume.png'],
+  [/Only ETIs|estrena dientes|se asomó|CAZM entregó/i,'STK-Kael-Palomitas.png'],
+  [/posada|segundo aire|escapada/i,'STK-Kael-DJ.png'],
+  [/cincuenta/i,'STK-Kael-Rodilla.png']
+ ];
+ return matches.find(([title])=>title.test(post.titulo))?.[1];
+}
 function renderPost(post,photos){
    const article=make('article');article.id=postAnchor(post);article.className='story blog-post';article.style.padding='20px 0 25px';
    const head=make('div');
@@ -238,7 +248,11 @@ function renderPost(post,photos){
    const title=add(article,'h3',post.titulo);title.style.fontSize='clamp(21px,3.4vw,29px)';title.style.fontFamily='Georgia,serif';
    article.insertBefore(head,title);
    add(article,'p',post.texto);
-   const chatReactions=post.reactions||[];
+   const sticker=editorialSticker(post);
+   const chatReactions=(post.reactions||[]).map(reaction=>
+    sticker && /^Kael(?:\s|$|[→:·])/i.test((reaction.speaker||'').trim())
+     ? {...reaction,file:sticker}
+     : reaction);
    if(chatReactions.length){
     const thread=make('div');thread.className='chat-reactions';thread.setAttribute('aria-label','Mensajes y reacciones del chat');
     for(const reaction of chatReactions){
