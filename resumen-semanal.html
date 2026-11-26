@@ -247,7 +247,13 @@ function renderPost(post,photos){
    add(head,'span',' · '+dateFmt(post.fecha)+(post.hora?' · Hasta las '+post.hora+' h':''),'date');
    const title=add(article,'h3',post.titulo);title.style.fontSize='clamp(21px,3.4vw,29px)';title.style.fontFamily='Georgia,serif';
    article.insertBefore(head,title);
-   add(article,'p',post.texto);
+   if(post.categoria==='homenaje'){
+    article.style.borderLeft='3px solid #927d64';
+    article.style.paddingLeft='16px';
+    for(const paragraph of post.texto.split('\n\n')) add(article,'p',paragraph);
+   }else{
+    add(article,'p',post.texto);
+   }
    const sticker=editorialSticker(post);
    const chatReactions=(post.reactions||[]).map(reaction=>
     sticker && /^Kael(?:\s|$|[→:·])/i.test((reaction.speaker||'').trim())
@@ -470,7 +476,35 @@ async function start(){
   if(profileErr){status('No pude comprobar tu perfil: '+profileErr.message);return}
   if(!profile){guest('🔒 Necesitas tener un perfil vinculado para entrar al blog.');return}
   const manifest=await (await callApi('manifest')).json();
-  posts=(manifest.posts||[]).map(post=>({
+  const recentEditorialPosts = [
+    {
+      "date": "2026-11-26",
+      "week_start": "2026-11-23",
+      "title": "🕯️ El cariño se queda",
+      "category": "homenaje",
+      "text": "Hoy hacemos una pausa para recordar a las mamás y los papás que ya no están. A quienes estos días han despedido a alguien querido, les mandamos un abrazo con el alma. Ojalá encuentren un ratito para recordar una frase, una risa o una de esas cosas chiquitas que siguen haciendo presente a quien queremos.\n\nEn el grupo hubo un día de silencio y un gesto sencillo que vale la pena llevarnos de aquí: si hoy puedes llamar, abrazar o decir «te quiero», hazlo. Y si hoy te toca extrañar, que también haya alguien que te abrace a ti.",
+      "order": 1
+    },
+    {
+      "date": "2026-11-25",
+      "week_start": "2026-11-23",
+      "title": "👻 La secundaria abrió el expediente de la güija",
+      "category": "recuerdos",
+      "text": "Bastó un reel sobre la secundaria para que el chat se pusiera a contar leyendas de los baños. Entre risas, alguien preguntó a quién habían invocado y la respuesta más sensata de la noche fue que ni siquiera habían aclarado de quién hablaban.",
+      "order": 1,
+      "reactions": [
+        {
+          "speaker": "Kael",
+          "message": "Con esos testimonios, el expediente sigue abierto. 👀",
+          "file": "STK-Kael-Palomitas.png",
+          "caption": "Kael con palomitas"
+        }
+      ]
+    }
+  ];
+  const manifestPosts = manifest.posts || [];
+  const publishedTitles = new Set(manifestPosts.map(post => post.date + '|' + post.title));
+  posts=manifestPosts.concat(recentEditorialPosts.filter(post => !publishedTitles.has(post.date + '|' + post.title))).map(post=>({
    fecha:post.date,semana_inicio:post.week_start,titulo:post.title,categoria:post.category,
    texto:post.text,orden:post.order,hora:post.time||'',photos:post.photos||[],reactions:post.reactions||[]
   })).sort((a,b)=>b.fecha.localeCompare(a.fecha)||b.hora.localeCompare(a.hora)||b.orden-a.orden);
