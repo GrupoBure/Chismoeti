@@ -68,16 +68,16 @@ main{max-width:1320px}
 .paper{padding:16px}
 .masthead h1{font-size:38px}
 }
-.remembrance-hearts{position:relative;isolation:isolate;background-color:#f9eff2;border-radius:0 12px 12px 0}
+.remembrance-hearts{position:relative;isolation:isolate;background-color:#fff0e6;border-radius:0 12px 12px 0}
 @media(prefers-reduced-motion:no-preference){
  .remembrance-hearts{animation:remembrance-background 13s ease-in-out infinite alternate}
 }
 @keyframes remembrance-background{
- from{background-color:#f9eff2}
- to{background-color:#f5c9cc}
+ from{background-color:#fff0e6}
+ to{background-color:#f4bdb0}
 }
 .remembrance-hearts .remembrance-hearts-layer{position:absolute;inset:0;overflow:hidden;border-radius:inherit;pointer-events:none;z-index:-1}
-.remembrance-hearts-layer span{position:absolute;left:var(--left);bottom:-1.5rem;color:#ab5875;font-size:var(--size);opacity:0;animation:remembrance-heart-rise var(--duration) linear var(--delay) infinite}
+.remembrance-hearts-layer span{position:absolute;left:var(--left);bottom:-1.5rem;color:#ad554b;font-size:var(--size);opacity:0;animation:remembrance-heart-rise var(--duration) linear var(--delay) infinite}
 @keyframes remembrance-heart-rise{
  0%{transform:translateY(0);opacity:0}
  20%,65%{opacity:.22}
@@ -268,7 +268,7 @@ function renderPost(post,photos){
     const layer=make('div');
     layer.className='remembrance-hearts-layer';
     layer.setAttribute('aria-hidden','true');
-    for(const [left,size,duration,delay] of [[5,16,17,-6],[15,20,19,-10],[24,24,20,-14],[35,14,23,-18],[46,15,18,-3],[57,18,21,-15],[68,22,22,-13],[77,14,24,-19],[85,17,16,-8],[93,26,21,-16]]){
+    for(const [left,size,duration,delay] of [[4,16,17,-6],[10,14,22,-18],[15,20,19,-10],[21,17,24,-4],[27,24,20,-14],[33,14,23,-18],[39,19,22,-10],[45,15,18,-3],[51,23,25,-20],[57,18,21,-15],[63,15,19,-12],[69,22,22,-13],[75,14,24,-19],[81,20,23,-5],[87,17,16,-8],[93,26,21,-16]]){
      const heart=add(layer,'span','♡');
      heart.style.setProperty('--left',left+'%');
      heart.style.setProperty('--size',size+'px');
