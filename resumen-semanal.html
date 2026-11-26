@@ -68,7 +68,14 @@ main{max-width:1320px}
 .paper{padding:16px}
 .masthead h1{font-size:38px}
 }
-.remembrance-hearts{position:relative;isolation:isolate;background:linear-gradient(110deg,#fffaf5,#f9eff2);border-radius:0 12px 12px 0}
+.remembrance-hearts{position:relative;isolation:isolate;background-color:#f9eff2;border-radius:0 12px 12px 0}
+@media(prefers-reduced-motion:no-preference){
+ .remembrance-hearts{animation:remembrance-background 13s ease-in-out infinite alternate}
+}
+@keyframes remembrance-background{
+ from{background-color:#f9eff2}
+ to{background-color:#f5c9cc}
+}
 .remembrance-hearts .remembrance-hearts-layer{position:absolute;inset:0;overflow:hidden;border-radius:inherit;pointer-events:none;z-index:-1}
 .remembrance-hearts-layer span{position:absolute;left:var(--left);bottom:-1.5rem;color:#ab5875;font-size:var(--size);opacity:0;animation:remembrance-heart-rise var(--duration) linear var(--delay) infinite}
 @keyframes remembrance-heart-rise{
