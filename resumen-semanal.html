@@ -68,6 +68,15 @@ main{max-width:1320px}
 .paper{padding:16px}
 .masthead h1{font-size:38px}
 }
+.remembrance-hearts{position:relative;isolation:isolate;background:linear-gradient(110deg,#fffaf5,#f9eff2);border-radius:0 12px 12px 0}
+.remembrance-hearts .remembrance-hearts-layer{position:absolute;inset:0;overflow:hidden;border-radius:inherit;pointer-events:none;z-index:-1}
+.remembrance-hearts-layer span{position:absolute;left:var(--left);bottom:-1.5rem;color:#ab5875;font-size:var(--size);opacity:0;animation:remembrance-heart-rise var(--duration) linear var(--delay) infinite}
+@keyframes remembrance-heart-rise{
+ 0%{transform:translateY(0);opacity:0}
+ 20%,65%{opacity:.22}
+ 100%{transform:translate(1.1rem,-13rem);opacity:0}
+}
+@media(prefers-reduced-motion:reduce){.remembrance-hearts-layer{display:none}}
 </style></head><body>
 <main><a class="back" href="./index.html">← Volver a Chismoeti</a><div class="paper">
 <header class="masthead"><div class="eyebrow">Generación E-6 · 1997–2000 · Solo registrados</div><h1>El blog del Chismoeti 📰</h1><p class="muted">Una semana, varios chismes. Lo que pasó de verdad, contado como hablamos nosotros. 😂</p></header>
@@ -247,6 +256,20 @@ function renderPost(post,photos){
    add(head,'span',' · '+dateFmt(post.fecha)+(post.hora?' · Hasta las '+post.hora+' h':''),'date');
    const title=add(article,'h3',post.titulo);title.style.fontSize='clamp(21px,3.4vw,29px)';title.style.fontFamily='Georgia,serif';
    article.insertBefore(head,title);
+   if(post.fecha==='2026-11-26' && post.categoria==='homenaje' && post.titulo==='🕯️ El cariño se queda'){
+    article.classList.add('remembrance-hearts');
+    const layer=make('div');
+    layer.className='remembrance-hearts-layer';
+    layer.setAttribute('aria-hidden','true');
+    for(const [left,size,duration,delay] of [[8,16,17,-6],[24,24,20,-14],[47,15,18,-3],[68,22,22,-13],[83,17,16,-8],[94,26,21,-16]]){
+     const heart=add(layer,'span','♡');
+     heart.style.setProperty('--left',left+'%');
+     heart.style.setProperty('--size',size+'px');
+     heart.style.setProperty('--duration',duration+'s');
+     heart.style.setProperty('--delay',delay+'s');
+    }
+    article.append(layer);
+   }
    if(post.categoria==='homenaje'){
     article.style.borderLeft='3px solid #927d64';
     article.style.paddingLeft='16px';
