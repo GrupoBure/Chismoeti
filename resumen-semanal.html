@@ -268,7 +268,7 @@ function renderPost(post,photos){
     const layer=make('div');
     layer.className='remembrance-hearts-layer';
     layer.setAttribute('aria-hidden','true');
-    for(const [left,size,duration,delay] of [[8,16,17,-6],[24,24,20,-14],[47,15,18,-3],[68,22,22,-13],[83,17,16,-8],[94,26,21,-16]]){
+    for(const [left,size,duration,delay] of [[5,16,17,-6],[15,20,19,-10],[24,24,20,-14],[35,14,23,-18],[46,15,18,-3],[57,18,21,-15],[68,22,22,-13],[77,14,24,-19],[85,17,16,-8],[93,26,21,-16]]){
      const heart=add(layer,'span','♡');
      heart.style.setProperty('--left',left+'%');
      heart.style.setProperty('--size',size+'px');
